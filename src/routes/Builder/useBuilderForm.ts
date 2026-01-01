@@ -234,7 +234,8 @@ export function useBuilderForm() {
   const reset = useCallback(() => { setForm(createInitialState()); }, []);
 
   const loadForm = useCallback((data: BuilderFormState) => {
-    setForm(data);
+    // 深拷贝确保创建全新对象
+    setForm(JSON.parse(JSON.stringify(data)));
   }, []);
 
   return {

@@ -49,12 +49,16 @@ export default function Builder() {
   const handleLoadDraft = () => {
     try {
       const draft = localStorage.getItem('resumeboost_draft');
+      console.log('Loading draft:', draft);
       if (draft) {
-        loadForm(JSON.parse(draft));
+        const parsed = JSON.parse(draft);
+        console.log('Parsed draft:', parsed);
+        loadForm(parsed);
         showToast('草稿已加载', 'success');
         setHasDraft(false);
       }
-    } catch {
+    } catch (e) {
+      console.error('Load draft error:', e);
       showToast('加载草稿失败', 'error');
     }
   };
@@ -80,9 +84,11 @@ export default function Builder() {
   // 保存草稿到本地存储
   const handleSaveDraft = () => {
     try {
+      console.log('Saving draft:', form);
       localStorage.setItem('resumeboost_draft', JSON.stringify(form));
       showToast('草稿已保存', 'success');
-    } catch {
+    } catch (e) {
+      console.error('Save draft error:', e);
       showToast('保存失败', 'error');
     }
   };
@@ -691,7 +697,7 @@ function ResumePreview({ form, densityMode = 'normal', previewRef }: {
                   <div key={exp.id} className={styles.itemGap}>
                     <div className="flex justify-between items-start"><span className="font-semibold">{exp.company}</span><span className={`text-gray-500 ${styles.textSize}`}>{formatTime(exp.startYear, exp.startMonth, exp.endYear, exp.endMonth)}</span></div>
                     <div className={`text-gray-600 ${styles.textSize}`}>{exp.position}{exp.location && ` · ${exp.location}`}</div>
-                    {exp.bullets.filter(b => b.trim()).length > 0 && <p className={`text-gray-700 ${styles.textSize}`}>{exp.bullets.filter(b => b.trim()).join(' ')}</p>}
+                    {exp.bullets.filter(b => b && b.trim()).length > 0 && <p className={`text-gray-700 ${styles.textSize}`}>{exp.bullets.filter(b => b && b.trim()).join(' ')}</p>}
                   </div>
                 ))}
               </div>
@@ -708,8 +714,8 @@ function ResumePreview({ form, densityMode = 'normal', previewRef }: {
                       <span className={`text-gray-500 ${styles.textSize}`}>{formatTime(proj.startYear, proj.startMonth, proj.endYear, proj.endMonth)}</span>
                     </div>
                     {proj.role && <div className={`text-gray-600 ${styles.textSize}`}>{proj.role}</div>}
-                    {proj.bullets.filter(b => b.trim()).length > 0 && (
-                      <ul className="mt-0.5 space-y-0">{proj.bullets.filter(b => b.trim()).map((bullet, i) => (<li key={i} className={`text-gray-700 ${styles.textSize} flex`}><span className="mr-1">•</span><span>{bullet}</span></li>))}</ul>
+                    {proj.bullets.filter(b => b && b.trim()).length > 0 && (
+                      <ul className="mt-0.5 space-y-0">{proj.bullets.filter(b => b && b.trim()).map((bullet, i) => (<li key={i} className={`text-gray-700 ${styles.textSize} flex`}><span className="mr-1">•</span><span>{bullet}</span></li>))}</ul>
                     )}
                   </div>
                 ))}
