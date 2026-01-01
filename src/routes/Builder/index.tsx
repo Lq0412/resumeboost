@@ -25,6 +25,7 @@ export default function Builder() {
     updateProject,
     updateProjectBullet,
     addProjectBullet,
+    removeProjectBullet,
     updateSkills,
     addSkillCategory,
     removeSkillCategory,
@@ -252,23 +253,29 @@ export default function Builder() {
                       onEndChange={(y, m) => { updateProject(proj.id, 'endYear', y); updateProject(proj.id, 'endMonth', m); }}
                     />
                   </div>
-                  <textarea
-                    value={proj.bullets.join('\n')}
-                    onChange={(e) => {
-                      const lines = e.target.value.split('\n');
-                      lines.forEach((line, i) => {
-                        if (i < proj.bullets.length) {
-                          updateProjectBullet(proj.id, i, line);
-                        } else if (line.trim() && proj.bullets.length < 5) {
-                          addProjectBullet(proj.id);
-                          setTimeout(() => updateProjectBullet(proj.id, i, line), 0);
-                        }
-                      });
-                    }}
-                    className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded focus:ring-1 focus:ring-blue-500"
-                    rows={3}
-                    placeholder="项目描述..."
-                  />
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">项目描述</label>
+                    <div className="space-y-1">
+                      {proj.bullets.map((bullet, bIdx) => (
+                        <div key={bIdx} className="flex gap-1 items-start">
+                          <span className="text-gray-400 mt-1.5 text-sm">•</span>
+                          <input
+                            type="text"
+                            value={bullet}
+                            onChange={(e) => updateProjectBullet(proj.id, bIdx, e.target.value)}
+                            className="flex-1 px-2 py-1 text-sm border border-gray-200 rounded focus:ring-1 focus:ring-blue-500"
+                            placeholder="描述项目内容、技术栈、成果..."
+                          />
+                          {proj.bullets.length > 1 && (
+                            <button onClick={() => removeProjectBullet(proj.id, bIdx)} className="text-gray-400 hover:text-red-500 px-1">×</button>
+                          )}
+                        </div>
+                      ))}
+                      {proj.bullets.length < 5 && (
+                        <button onClick={() => addProjectBullet(proj.id)} className="text-xs text-blue-600 hover:text-blue-800 ml-4">+ 添加描述</button>
+                      )}
+                    </div>
+                  </div>
                 </div>
               ))}
             </Section>
@@ -416,7 +423,16 @@ function ResumePreview({ form }: { form: ReturnType<typeof useBuilderForm>['form
                 <span className="text-gray-500 text-xs whitespace-nowrap">{formatTime(proj.startYear, proj.startMonth, proj.endYear, proj.endMonth)}</span>
               </div>
               {proj.role && <div className="text-gray-600 text-xs mb-1">{proj.role}</div>}
-              {proj.bullets.filter(b => b.trim()).length > 0 && <p className="text-gray-700">{proj.bullets.filter(b => b.trim()).join(' ')}</p>}
+              {proj.bullets.filter(b => b.trim()).length > 0 && (
+                <ul className="mt-1 space-y-0.5">
+                  {proj.bullets.filter(b => b.trim()).map((bullet, i) => (
+                    <li key={i} className="text-gray-700 text-xs flex">
+                      <span className="mr-1">•</span>
+                      <span>{bullet}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           ))}
         </div>

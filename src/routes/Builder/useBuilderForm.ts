@@ -184,6 +184,16 @@ export function useBuilderForm() {
     }));
   }, []);
 
+  const removeProjectBullet = useCallback((id: string, index: number) => {
+    setForm((prev) => ({
+      ...prev,
+      projects: prev.projects.map((p) => {
+        if (p.id !== id || p.bullets.length <= 1) return p;
+        return { ...p, bullets: p.bullets.filter((_, i) => i !== index) };
+      }),
+    }));
+  }, []);
+
   const updateSkills = useCallback((value: string) => {
     setForm((prev) => ({ ...prev, skills: value }));
   }, []);
@@ -234,6 +244,7 @@ export function useBuilderForm() {
     updateProject,
     updateProjectBullet,
     addProjectBullet,
+    removeProjectBullet,
     updateSkills,
     addSkillCategory,
     removeSkillCategory,
