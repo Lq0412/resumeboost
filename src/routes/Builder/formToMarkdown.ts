@@ -25,8 +25,16 @@ export function formToMarkdown(form: BuilderFormState): string {
   const contactParts: string[] = [];
   if (form.basicInfo.phone) contactParts.push(`📱 ${form.basicInfo.phone}`);
   if (form.basicInfo.email) contactParts.push(`✉️ ${form.basicInfo.email}`);
+  if (form.basicInfo.city) contactParts.push(`📍 ${form.basicInfo.city}`);
   if (form.basicInfo.status) contactParts.push(`🔵 ${form.basicInfo.status}`);
   if (form.basicInfo.jobTitle) contactParts.push(`💼 ${form.basicInfo.jobTitle}`);
+  if (form.basicInfo.birthYear) {
+    const birth = form.basicInfo.birthMonth ? `${form.basicInfo.birthYear}-${form.basicInfo.birthMonth}` : form.basicInfo.birthYear;
+    contactParts.push(`🎂 ${birth}`);
+  }
+  if (form.basicInfo.hometown) contactParts.push(`🏠 ${form.basicInfo.hometown}`);
+  if (form.basicInfo.github) contactParts.push(`🔗 ${form.basicInfo.github}`);
+  if (form.basicInfo.website) contactParts.push(`🌐 ${form.basicInfo.website}`);
   
   if (contactParts.length > 0) {
     lines.push(contactParts.join(' | '));

@@ -118,6 +118,40 @@ export default function Builder() {
                   )}
                 </div>
               </div>
+              {/* 更多信息（可选） */}
+              <details className="mt-3">
+                <summary className="text-xs text-blue-600 cursor-pointer hover:text-blue-800">+ 更多信息（GitHub、个人网站等）</summary>
+                <div className="grid grid-cols-2 gap-3 mt-3 pt-3 border-t border-gray-100">
+                  <Input label="GitHub" value={form.basicInfo.github || ''} onChange={(v) => updateBasicInfo('github', v)} placeholder="github.com/username" />
+                  <Input label="个人网站/博客" value={form.basicInfo.website || ''} onChange={(v) => updateBasicInfo('website', v)} placeholder="yoursite.com" />
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">出生年月</label>
+                    <div className="flex gap-2">
+                      <select 
+                        value={form.basicInfo.birthYear || ''} 
+                        onChange={(e) => updateBasicInfo('birthYear', e.target.value)}
+                        className="flex-1 px-2 py-2 border border-gray-300 rounded-md text-sm"
+                      >
+                        <option value="">年</option>
+                        {Array.from({ length: 40 }, (_, i) => String(new Date().getFullYear() - 18 - i)).map(y => (
+                          <option key={y} value={y}>{y}</option>
+                        ))}
+                      </select>
+                      <select 
+                        value={form.basicInfo.birthMonth || ''} 
+                        onChange={(e) => updateBasicInfo('birthMonth', e.target.value)}
+                        className="flex-1 px-2 py-2 border border-gray-300 rounded-md text-sm"
+                      >
+                        <option value="">月</option>
+                        {['01','02','03','04','05','06','07','08','09','10','11','12'].map(m => (
+                          <option key={m} value={m}>{parseInt(m)}月</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <Input label="籍贯" value={form.basicInfo.hometown || ''} onChange={(v) => updateBasicInfo('hometown', v)} placeholder="广东广州" />
+                </div>
+              </details>
             </Section>
 
             {/* 教育经历 */}
@@ -294,12 +328,12 @@ export default function Builder() {
 
           {/* 右侧：实时预览 */}
           <div className="order-1 lg:order-2 lg:sticky lg:top-20 lg:h-[calc(100vh-6rem)]">
-            <div className="bg-white rounded-lg shadow-lg h-full overflow-hidden flex flex-col">
-              <div className="px-4 py-2 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-700">📄 简历预览</span>
-                <span className="text-xs text-gray-500">A4 纸张 · 实时更新</span>
+            <div className="bg-gray-700 rounded-lg shadow-lg h-full overflow-hidden flex flex-col">
+              <div className="px-4 py-2 bg-gray-800 border-b border-gray-600 flex items-center justify-between flex-shrink-0">
+                <span className="text-sm font-medium text-gray-200">📄 简历预览</span>
+                <span className="text-xs text-gray-400">A4 纸张 · 实时更新</span>
               </div>
-              <div className="flex-1 overflow-auto bg-gray-200 p-4">
+              <div className="flex-1 overflow-auto p-4 flex justify-center">
                 <ResumePreview form={form} />
               </div>
             </div>
@@ -310,20 +344,42 @@ export default function Builder() {
   );
 }
 
-// 简历预览组件
+// A4 纸张尺寸常量 (mm -> px, 96dpi)
+const A4_WIDTH = 210 * 3.78; // ~794px
+const A4_HEIGHT = 297 * 3.78; // ~1123px
+const A4_PADDING = 40; // 页边距
+
+// 简历预览组件 - A4纸张模拟
 function ResumePreview({ form }: { form: ReturnType<typeof useBuilderForm>['form'] }) {
   const contentRef = useRef<HTMLDivElement>(null);
-  const [pageInfo, setPageInfo] = useState({ pages: 1, isOverflow: false });
-  
-  const A4_CONTENT_HEIGHT = 1000;
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(0.6);
+  const [contentHeight, setContentHeight] = useState(0);
 
+  // 计算内容高度和页数
   useEffect(() => {
     if (contentRef.current) {
-      const height = contentRef.current.scrollHeight;
-      const pages = Math.ceil(height / A4_CONTENT_HEIGHT);
-      setPageInfo({ pages, isOverflow: pages > 1 });
+      setContentHeight(contentRef.current.scrollHeight);
     }
   }, [form]);
+
+  // 根据容器宽度自动调整缩放
+  useEffect(() => {
+    const updateScale = () => {
+      if (containerRef.current) {
+        const containerWidth = containerRef.current.clientWidth - 32; // 减去padding
+        const newScale = Math.min(containerWidth / A4_WIDTH, 0.75);
+        setScale(Math.max(newScale, 0.5));
+      }
+    };
+    updateScale();
+    window.addEventListener('resize', updateScale);
+    return () => window.removeEventListener('resize', updateScale);
+  }, []);
+
+  const usedPercent = Math.min(100, Math.round((contentHeight / (A4_HEIGHT - A4_PADDING * 2)) * 100));
+  const isOverflow = contentHeight > (A4_HEIGHT - A4_PADDING * 2);
+  const pages = Math.ceil(contentHeight / (A4_HEIGHT - A4_PADDING * 2));
 
   const hasContent = form.basicInfo.name || form.basicInfo.phone || form.education.some(e => e.school);
 
@@ -338,12 +394,21 @@ function ResumePreview({ form }: { form: ReturnType<typeof useBuilderForm>['form
 
   if (!hasContent) {
     return (
-      <div className="bg-white shadow-lg mx-auto" style={{ width: '210mm', minHeight: '297mm', maxWidth: '100%', transform: 'scale(0.5)', transformOrigin: 'top center' }}>
-        <div className="h-full flex items-center justify-center text-gray-400 p-8" style={{ minHeight: '297mm' }}>
-          <div className="text-center">
-            <div className="text-6xl mb-4">📝</div>
-            <p className="text-xl">开始填写左侧表单</p>
-            <p className="text-base mt-2">简历将在这里实时显示</p>
+      <div 
+        ref={containerRef}
+        className="w-full flex flex-col items-center"
+      >
+        <div 
+          className="bg-white shadow-2xl flex items-center justify-center"
+          style={{ 
+            width: A4_WIDTH * scale, 
+            height: A4_HEIGHT * scale,
+          }}
+        >
+          <div className="text-center text-gray-400">
+            <div className="text-4xl mb-3">📝</div>
+            <p className="text-base">开始填写左侧表单</p>
+            <p className="text-sm mt-1">简历将在这里实时显示</p>
           </div>
         </div>
       </div>
@@ -351,102 +416,152 @@ function ResumePreview({ form }: { form: ReturnType<typeof useBuilderForm>['form
   }
 
   return (
-    <div className="relative">
-      {pageInfo.isOverflow && (
-        <div className="sticky top-0 z-10 bg-amber-100 border-b border-amber-300 px-4 py-2 text-amber-800 text-sm flex items-center gap-2">
-          <span>⚠️</span>
-          <span>内容约 {pageInfo.pages} 页，建议精简至 1 页</span>
+    <div ref={containerRef} className="w-full flex flex-col items-center">
+      {/* 页面使用情况指示器 */}
+      <div className="w-full max-w-md mb-3">
+        <div className="flex justify-between text-xs text-gray-300 mb-1">
+          <span>页面使用: {usedPercent}%</span>
+          <span>{isOverflow ? `⚠️ 约 ${pages} 页` : '✓ 1 页内'}</span>
         </div>
-      )}
-      
-      <div className="bg-white shadow-lg mx-auto relative" style={{ width: '210mm', minHeight: '297mm', maxWidth: '100%', transform: 'scale(0.5)', transformOrigin: 'top center', marginBottom: '-50%' }}>
-        <div className="absolute left-0 right-0 border-t-2 border-dashed border-red-300 pointer-events-none" style={{ top: '297mm' }}>
-          <span className="absolute right-2 -top-3 bg-red-100 text-red-600 text-xs px-2 py-0.5 rounded">第 1 页结束</span>
+        <div className="h-2 bg-gray-600 rounded-full overflow-hidden">
+          <div 
+            className={`h-full transition-all duration-300 ${isOverflow ? 'bg-amber-500' : usedPercent > 85 ? 'bg-yellow-500' : 'bg-green-500'}`}
+            style={{ width: `${Math.min(usedPercent, 100)}%` }}
+          />
         </div>
-        
-        <div ref={contentRef} className="p-8 text-gray-800" style={{ fontFamily: "'Microsoft YaHei', 'PingFang SC', sans-serif", fontSize: '14px', lineHeight: '1.7' }}>
-          {/* 头部 */}
-          <div className="mb-5 flex justify-between">
-            <div className="flex-1">
-              {form.basicInfo.name && <h1 className="text-3xl font-bold text-gray-900 mb-2">{form.basicInfo.name}</h1>}
-              <div className="flex flex-wrap gap-x-4 gap-y-1 text-gray-600 text-sm">
-                {form.basicInfo.phone && <span>📱 {form.basicInfo.phone}</span>}
-                {form.basicInfo.email && <span>✉️ {form.basicInfo.email}</span>}
-                {form.basicInfo.status && <span>🔵 {form.basicInfo.status}</span>}
-                {form.basicInfo.jobTitle && <span>💼 {form.basicInfo.jobTitle}</span>}
-              </div>
-            </div>
-            {form.photo && <img src={form.photo} alt="照片" className="w-24 h-32 object-cover rounded ml-4" />}
-          </div>
+        {isOverflow && (
+          <p className="text-amber-400 text-xs mt-1">建议精简内容至 1 页，提高简历通过率</p>
+        )}
+      </div>
 
-          {/* 教育经历 */}
-          {form.education.some(e => e.school) && (
-            <div className="mb-5">
-              <h2 className="text-base font-bold text-gray-900 border-b-2 border-gray-800 pb-1 mb-3">教育经历</h2>
-              {form.education.filter(e => e.school).map((edu) => (
-                <div key={edu.id} className="mb-2">
-                  <div className="flex justify-between items-start">
-                    <div><span className="font-semibold">{edu.school}</span>{edu.major && <span className="text-gray-600 ml-2">{edu.major}</span>}</div>
-                    <span className="text-gray-500 text-sm">{formatTime(edu.startYear, edu.startMonth, edu.endYear, edu.endMonth)}</span>
-                  </div>
-                  {edu.degree && <div className="text-gray-600 text-sm">{edu.degree}</div>}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* 专业技能 */}
-          {(form.skillCategories?.some(c => c.name) || form.skills) && (
-            <div className="mb-5">
-              <h2 className="text-base font-bold text-gray-900 border-b-2 border-gray-800 pb-1 mb-3">专业技能</h2>
-              {form.skillCategories?.filter(c => c.name).map((cat) => (
-                <div key={cat.id} className="mb-2"><span className="font-semibold">{cat.name}</span>{cat.description && <p className="text-gray-700 mt-0.5">{cat.description}</p>}</div>
-              ))}
-              {!form.skillCategories?.length && form.skills && <p className="text-gray-700">{form.skills}</p>}
-            </div>
-          )}
-
-          {/* 工作经历 */}
-          {form.experience.some(e => e.company) && (
-            <div className="mb-5">
-              <h2 className="text-base font-bold text-gray-900 border-b-2 border-gray-800 pb-1 mb-3">工作经历</h2>
-              {form.experience.filter(e => e.company).map((exp) => (
-                <div key={exp.id} className="mb-3">
-                  <div className="flex justify-between items-start"><span className="font-semibold">{exp.company}</span><span className="text-gray-500 text-sm">{formatTime(exp.startYear, exp.startMonth, exp.endYear, exp.endMonth)}</span></div>
-                  <div className="text-gray-600 text-sm mb-1">{exp.position}{exp.location && ` · ${exp.location}`}</div>
-                  {exp.bullets.filter(b => b.trim()).length > 0 && <p className="text-gray-700">{exp.bullets.filter(b => b.trim()).join(' ')}</p>}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* 项目经历 */}
-          {form.projects.some(p => p.name) && (
-            <div className="mb-5">
-              <h2 className="text-base font-bold text-gray-900 border-b-2 border-gray-800 pb-1 mb-3">项目经历</h2>
-              {form.projects.filter(p => p.name).map((proj) => (
-                <div key={proj.id} className="mb-3">
-                  <div className="flex justify-between items-start">
-                    <div><span className="font-semibold">{proj.name}</span>{proj.link && <a href={proj.link} target="_blank" rel="noopener noreferrer" className="text-blue-600 text-sm ml-2">{proj.link}</a>}</div>
-                    <span className="text-gray-500 text-sm">{formatTime(proj.startYear, proj.startMonth, proj.endYear, proj.endMonth)}</span>
-                  </div>
-                  {proj.role && <div className="text-gray-600 text-sm mb-1">{proj.role}</div>}
-                  {proj.bullets.filter(b => b.trim()).length > 0 && (
-                    <ul className="mt-1 space-y-0.5">{proj.bullets.filter(b => b.trim()).map((bullet, i) => (<li key={i} className="text-gray-700 text-sm flex"><span className="mr-1">•</span><span>{bullet}</span></li>))}</ul>
+      {/* A4 纸张 */}
+      <div 
+        className="bg-white shadow-2xl relative overflow-hidden"
+        style={{ 
+          width: A4_WIDTH * scale, 
+          height: A4_HEIGHT * scale,
+        }}
+      >
+        {/* 内容区域 */}
+        <div 
+          style={{ 
+            transform: `scale(${scale})`,
+            transformOrigin: 'top left',
+            width: A4_WIDTH,
+            minHeight: A4_HEIGHT,
+            padding: A4_PADDING,
+            fontFamily: "'Microsoft YaHei', 'PingFang SC', sans-serif",
+          }}
+        >
+          <div ref={contentRef}>
+            {/* 头部 */}
+            <div className="mb-5 flex">
+              <div className="flex-1 pr-4">
+                {form.basicInfo.name && <h1 className="text-2xl font-bold text-gray-900 mb-1">{form.basicInfo.name}</h1>}
+                {form.basicInfo.jobTitle && <p className="text-base text-gray-700 mb-2">求职意向：{form.basicInfo.jobTitle}</p>}
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-gray-600 text-sm">
+                  {form.basicInfo.phone && <span>📱 {form.basicInfo.phone}</span>}
+                  {form.basicInfo.email && <span>✉️ {form.basicInfo.email}</span>}
+                  {form.basicInfo.city && <span>📍 {form.basicInfo.city}</span>}
+                  {form.basicInfo.status && <span>🔵 {form.basicInfo.status}</span>}
+                  {form.basicInfo.birthYear && (
+                    <span>🎂 {form.basicInfo.birthYear}{form.basicInfo.birthMonth && `-${form.basicInfo.birthMonth}`}</span>
+                  )}
+                  {form.basicInfo.hometown && <span>🏠 {form.basicInfo.hometown}</span>}
+                  {form.basicInfo.github && (
+                    <a href={form.basicInfo.github.startsWith('http') ? form.basicInfo.github : `https://${form.basicInfo.github}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline truncate">
+                      🔗 {form.basicInfo.github}
+                    </a>
+                  )}
+                  {form.basicInfo.website && (
+                    <a href={form.basicInfo.website.startsWith('http') ? form.basicInfo.website : `https://${form.basicInfo.website}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline truncate">
+                      🌐 {form.basicInfo.website}
+                    </a>
                   )}
                 </div>
-              ))}
+              </div>
+              {form.photo && <img src={form.photo} alt="照片" className="w-20 h-28 object-cover rounded flex-shrink-0" />}
             </div>
-          )}
 
-          {/* 荣誉奖项 */}
-          {form.awards?.some(a => a.name) && (
-            <div className="mb-5">
-              <h2 className="text-base font-bold text-gray-900 border-b-2 border-gray-800 pb-1 mb-3">荣誉奖项</h2>
-              {form.awards.filter(a => a.name).map((award) => (<div key={award.id} className="flex justify-between mb-1"><span>{award.name}</span>{award.time && <span className="text-gray-500 text-sm">{award.time}</span>}</div>))}
-            </div>
-          )}
+            {/* 教育经历 */}
+            {form.education.some(e => e.school) && (
+              <div className="mb-5">
+                <h2 className="text-base font-bold text-gray-900 border-b-2 border-gray-800 pb-1 mb-3">教育经历</h2>
+                {form.education.filter(e => e.school).map((edu) => (
+                  <div key={edu.id} className="mb-2">
+                    <div className="flex justify-between items-start">
+                      <div><span className="font-semibold">{edu.school}</span>{edu.major && <span className="text-gray-600 ml-2">{edu.major}</span>}</div>
+                      <span className="text-gray-500 text-sm">{formatTime(edu.startYear, edu.startMonth, edu.endYear, edu.endMonth)}</span>
+                    </div>
+                    {edu.degree && <div className="text-gray-600 text-sm">{edu.degree}</div>}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* 专业技能 */}
+            {(form.skillCategories?.some(c => c.name) || form.skills) && (
+              <div className="mb-5">
+                <h2 className="text-base font-bold text-gray-900 border-b-2 border-gray-800 pb-1 mb-3">专业技能</h2>
+                {form.skillCategories?.filter(c => c.name).map((cat) => (
+                  <div key={cat.id} className="mb-2"><span className="font-semibold">{cat.name}</span>{cat.description && <p className="text-gray-700 mt-0.5">{cat.description}</p>}</div>
+                ))}
+                {!form.skillCategories?.length && form.skills && <p className="text-gray-700">{form.skills}</p>}
+              </div>
+            )}
+
+            {/* 工作经历 */}
+            {form.experience.some(e => e.company) && (
+              <div className="mb-5">
+                <h2 className="text-base font-bold text-gray-900 border-b-2 border-gray-800 pb-1 mb-3">工作经历</h2>
+                {form.experience.filter(e => e.company).map((exp) => (
+                  <div key={exp.id} className="mb-3">
+                    <div className="flex justify-between items-start"><span className="font-semibold">{exp.company}</span><span className="text-gray-500 text-sm">{formatTime(exp.startYear, exp.startMonth, exp.endYear, exp.endMonth)}</span></div>
+                    <div className="text-gray-600 text-sm mb-1">{exp.position}{exp.location && ` · ${exp.location}`}</div>
+                    {exp.bullets.filter(b => b.trim()).length > 0 && <p className="text-gray-700 text-sm">{exp.bullets.filter(b => b.trim()).join(' ')}</p>}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* 项目经历 */}
+            {form.projects.some(p => p.name) && (
+              <div className="mb-5">
+                <h2 className="text-base font-bold text-gray-900 border-b-2 border-gray-800 pb-1 mb-3">项目经历</h2>
+                {form.projects.filter(p => p.name).map((proj) => (
+                  <div key={proj.id} className="mb-3">
+                    <div className="flex justify-between items-start">
+                      <div><span className="font-semibold">{proj.name}</span>{proj.link && <a href={proj.link} target="_blank" rel="noopener noreferrer" className="text-blue-600 text-sm ml-2 hover:underline">{proj.link}</a>}</div>
+                      <span className="text-gray-500 text-sm">{formatTime(proj.startYear, proj.startMonth, proj.endYear, proj.endMonth)}</span>
+                    </div>
+                    {proj.role && <div className="text-gray-600 text-sm mb-1">{proj.role}</div>}
+                    {proj.bullets.filter(b => b.trim()).length > 0 && (
+                      <ul className="mt-1 space-y-0.5">{proj.bullets.filter(b => b.trim()).map((bullet, i) => (<li key={i} className="text-gray-700 text-sm flex"><span className="mr-2">•</span><span>{bullet}</span></li>))}</ul>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* 荣誉奖项 */}
+            {form.awards?.some(a => a.name) && (
+              <div className="mb-5">
+                <h2 className="text-base font-bold text-gray-900 border-b-2 border-gray-800 pb-1 mb-3">荣誉奖项</h2>
+                {form.awards.filter(a => a.name).map((award) => (<div key={award.id} className="flex justify-between mb-1"><span>{award.name}</span>{award.time && <span className="text-gray-500 text-sm">{award.time}</span>}</div>))}
+              </div>
+            )}
+          </div>
         </div>
+
+        {/* 页面分割线指示 */}
+        {isOverflow && (
+          <div 
+            className="absolute left-0 right-0 border-t-2 border-dashed border-red-400 pointer-events-none"
+            style={{ top: (A4_HEIGHT - A4_PADDING) * scale }}
+          >
+            <span className="absolute right-2 -top-5 text-xs text-red-500 bg-white px-1">第1页结束</span>
+          </div>
+        )}
       </div>
     </div>
   );

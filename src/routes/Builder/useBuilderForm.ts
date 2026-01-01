@@ -13,6 +13,12 @@ export interface BasicInfo {
   city?: string;
   jobTitle?: string;
   status?: string;
+  // 新增可选字段
+  github?: string;
+  website?: string;
+  birthYear?: string;
+  birthMonth?: string;
+  hometown?: string;  // 籍贯
 }
 
 export interface EducationEntry {
@@ -74,7 +80,7 @@ export interface BuilderFormState {
 }
 
 const createInitialState = (): BuilderFormState => ({
-  basicInfo: { name: '', phone: '', email: '', city: '', jobTitle: '', status: '' },
+  basicInfo: { name: '', phone: '', email: '', city: '', jobTitle: '', status: '', github: '', website: '', birthYear: '', birthMonth: '', hometown: '' },
   photo: '',
   education: [{ id: generateId(), school: '', major: '', degree: '', startYear: '', startMonth: '', endYear: '', endMonth: '' }],
   experience: [],  // 工作经历可选，初始为空
