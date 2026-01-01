@@ -3,18 +3,67 @@
  */
 
 import { useState, useCallback } from 'react';
-import type { 
-  BuilderFormState, 
-  BasicInfo, 
-  EducationEntry, 
-  ExperienceEntry, 
-  ProjectEntry,
-  FormValidationResult 
-} from '../../lib/validation';
-import { validateBuilderForm } from '../../lib/validation';
 
 // 生成唯一 ID
 const generateId = () => Math.random().toString(36).substring(2, 9);
+
+// 类型定义
+export interface BasicInfo {
+  name?: string;
+  phone: string;
+  email: string;
+  city?: string;
+  jobTitle?: string;  // 求职意向
+  status?: string;    // 求职状态
+}
+
+export interface EducationEntry {
+  id: string;
+  school: string;
+  major?: string;
+  degree?: string;
+  timePeriod: string;
+}
+
+export interface ExperienceEntry {
+  id: string;
+  company: string;
+  position: string;
+  timePeriod: string;
+  location?: string;
+  bullets: string[];
+}
+
+export interface ProjectEntry {
+  id: string;
+  name: string;
+  role?: string;
+  timePeriod?: string;
+  location?: string;
+  bullets: string[];
+}
+
+export interface SkillCategory {
+  id: string;
+  name: string;
+  description: string;
+}
+
+export interface Award {
+  id: string;
+  name: string;
+  time?: string;
+}
+
+export interface BuilderFormState {
+  basicInfo: BasicInfo;
+  education: EducationEntry[];
+  experience: ExperienceEntry[];
+  projects: ProjectEntry[];
+  skills: string;
+  skillCategories?: SkillCategory[];
+  awards?: Award[];
+}
 
 // 初始状态
 const createInitialState = (): BuilderFormState => ({
@@ -23,20 +72,25 @@ const createInitialState = (): BuilderFormState => ({
     phone: '',
     email: '',
     city: '',
+    jobTitle: '',
+    status: '',
   },
   education: [
     { id: generateId(), school: '', major: '', degree: '', timePeriod: '' }
   ],
   experience: [
-    { id: generateId(), company: '', position: '', timePeriod: '', bullets: [''] }
+    { id: generateId(), company: '', position: '', timePeriod: '', location: '', bullets: [''] }
   ],
   projects: [],
   skills: '',
+  skillCategories: [
+    { id: generateId(), name: '', description: '' }
+  ],
+  awards: [],
 });
 
 export function useBuilderForm() {
   const [form, setForm] = useState<BuilderFormState>(createInitialState);
-  const [errors, setErrors] = useState<string[]>([]);
 
   // 更新基本信息
   const updateBasicInfo = useCallback((field: keyof BasicInfo, value: string) => {
@@ -72,7 +126,7 @@ export function useBuilderForm() {
   const addExperience = useCallback(() => {
     setForm((prev) => ({
       ...prev,
-      experience: [...prev.experience, { id: generateId(), company: '', position: '', timePeriod: '', bullets: [''] }],
+      experience: [...prev.experience, { id: generateId(), company: '', position: '', timePeriod: '', location: '', bullets: [''] }],
     }));
   }, []);
 
@@ -126,7 +180,7 @@ export function useBuilderForm() {
   const addProject = useCallback(() => {
     setForm((prev) => ({
       ...prev,
-      projects: [...prev.projects, { id: generateId(), name: '', role: '', timePeriod: '', bullets: [''] }],
+      projects: [...prev.projects, { id: generateId(), name: '', role: '', timePeriod: '', location: '', bullets: [''] }],
     }));
   }, []);
 
@@ -176,27 +230,62 @@ export function useBuilderForm() {
     }));
   }, []);
 
-  // 更新技能
+  // 更新技能（简单文本）
   const updateSkills = useCallback((value: string) => {
     setForm((prev) => ({ ...prev, skills: value }));
   }, []);
 
-  // 验证表单
-  const validate = useCallback((): FormValidationResult => {
-    const result = validateBuilderForm(form);
-    setErrors(result.errors);
-    return result;
-  }, [form]);
+  // 技能分类操作
+  const addSkillCategory = useCallback(() => {
+    setForm((prev) => ({
+      ...prev,
+      skillCategories: [...(prev.skillCategories || []), { id: generateId(), name: '', description: '' }],
+    }));
+  }, []);
+
+  const removeSkillCategory = useCallback((id: string) => {
+    setForm((prev) => ({
+      ...prev,
+      skillCategories: (prev.skillCategories || []).filter((c) => c.id !== id),
+    }));
+  }, []);
+
+  const updateSkillCategory = useCallback((id: string, field: keyof Omit<SkillCategory, 'id'>, value: string) => {
+    setForm((prev) => ({
+      ...prev,
+      skillCategories: (prev.skillCategories || []).map((c) => (c.id === id ? { ...c, [field]: value } : c)),
+    }));
+  }, []);
+
+  // 荣誉奖项操作
+  const addAward = useCallback(() => {
+    setForm((prev) => ({
+      ...prev,
+      awards: [...(prev.awards || []), { id: generateId(), name: '', time: '' }],
+    }));
+  }, []);
+
+  const removeAward = useCallback((id: string) => {
+    setForm((prev) => ({
+      ...prev,
+      awards: (prev.awards || []).filter((a) => a.id !== id),
+    }));
+  }, []);
+
+  const updateAward = useCallback((id: string, field: keyof Omit<Award, 'id'>, value: string) => {
+    setForm((prev) => ({
+      ...prev,
+      awards: (prev.awards || []).map((a) => (a.id === id ? { ...a, [field]: value } : a)),
+    }));
+  }, []);
 
   // 重置表单
   const reset = useCallback(() => {
     setForm(createInitialState());
-    setErrors([]);
   }, []);
 
   return {
     form,
-    errors,
     updateBasicInfo,
     addEducation,
     removeEducation,
@@ -214,7 +303,12 @@ export function useBuilderForm() {
     addProjectBullet,
     removeProjectBullet,
     updateSkills,
-    validate,
+    addSkillCategory,
+    removeSkillCategory,
+    updateSkillCategory,
+    addAward,
+    removeAward,
+    updateAward,
     reset,
   };
 }

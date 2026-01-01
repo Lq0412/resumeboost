@@ -1,107 +1,120 @@
 /**
- * 将表单数据转换为 Markdown 格式（Simple_V1 模板）
+ * 将表单数据转换为 Markdown 格式的简历
  */
 
-import type { BuilderFormState } from '../../lib/validation';
-import { processSkills } from '../../lib/validation';
+import type { BuilderFormState } from './useBuilderForm';
 
 export function formToMarkdown(form: BuilderFormState): string {
   const lines: string[] = [];
 
-  // 姓名（如果有）
-  if (form.basicInfo.name?.trim()) {
-    lines.push(`# ${form.basicInfo.name.trim()}`);
+  // 基本信息
+  if (form.basicInfo.name) {
+    lines.push(`# ${form.basicInfo.name}`);
     lines.push('');
   }
 
-  // 联系方式
   const contactParts: string[] = [];
-  if (form.basicInfo.phone.trim()) {
-    contactParts.push(form.basicInfo.phone.trim());
-  }
-  if (form.basicInfo.email.trim()) {
-    contactParts.push(form.basicInfo.email.trim());
-  }
-  if (form.basicInfo.city?.trim()) {
-    contactParts.push(form.basicInfo.city.trim());
-  }
+  if (form.basicInfo.phone) contactParts.push(`📱 ${form.basicInfo.phone}`);
+  if (form.basicInfo.email) contactParts.push(`✉️ ${form.basicInfo.email}`);
+  if (form.basicInfo.status) contactParts.push(`🔵 ${form.basicInfo.status}`);
+  if (form.basicInfo.jobTitle) contactParts.push(`💼 ${form.basicInfo.jobTitle}`);
+  
   if (contactParts.length > 0) {
     lines.push(contactParts.join(' | '));
     lines.push('');
   }
 
-  // 技能
-  const skills = processSkills(form.skills);
-  if (skills.length > 0) {
-    lines.push('## Skills');
+  // 教育经历
+  const validEducation = form.education.filter(e => e.school);
+  if (validEducation.length > 0) {
+    lines.push('## 教育经历');
     lines.push('');
-    lines.push(skills.join(', '));
+    validEducation.forEach(edu => {
+      let line = `**${edu.school}**`;
+      if (edu.major) line += ` ${edu.major}`;
+      if (edu.timePeriod) line += ` | ${edu.timePeriod}`;
+      lines.push(line);
+      if (edu.degree) lines.push(edu.degree);
+      lines.push('');
+    });
+  }
+
+  // 专业技能
+  const validSkillCategories = form.skillCategories?.filter(c => c.name) || [];
+  if (validSkillCategories.length > 0 || form.skills) {
+    lines.push('## 专业技能');
     lines.push('');
+    
+    if (validSkillCategories.length > 0) {
+      validSkillCategories.forEach(cat => {
+        lines.push(`**${cat.name}**`);
+        if (cat.description) lines.push(cat.description);
+        lines.push('');
+      });
+    } else if (form.skills) {
+      lines.push(form.skills);
+      lines.push('');
+    }
   }
 
   // 工作经历
-  if (form.experience.length > 0) {
-    lines.push('## Experience');
+  const validExperience = form.experience.filter(e => e.company);
+  if (validExperience.length > 0) {
+    lines.push('## 工作经历');
     lines.push('');
-    
-    for (const exp of form.experience) {
-      if (!exp.company.trim()) continue;
+    validExperience.forEach(exp => {
+      let header = `**${exp.company}**`;
+      if (exp.timePeriod) header += ` | ${exp.timePeriod}`;
+      lines.push(header);
       
-      const header = [exp.company.trim(), exp.position.trim(), exp.timePeriod.trim()]
-        .filter(Boolean)
-        .join(' | ');
-      lines.push(`### ${header}`);
-      lines.push('');
+      const subLine: string[] = [];
+      if (exp.position) subLine.push(exp.position);
+      if (exp.location) subLine.push(exp.location);
+      if (subLine.length > 0) lines.push(subLine.join(' · '));
       
-      for (const bullet of exp.bullets) {
-        if (bullet.trim()) {
-          lines.push(`- ${bullet.trim()}`);
-        }
+      const validBullets = exp.bullets.filter(b => b.trim());
+      if (validBullets.length > 0) {
+        lines.push('');
+        lines.push(validBullets.join(' '));
       }
       lines.push('');
-    }
+    });
   }
 
   // 项目经历
-  if (form.projects.length > 0) {
-    const validProjects = form.projects.filter((p) => p.name.trim());
-    if (validProjects.length > 0) {
-      lines.push('## Projects');
-      lines.push('');
+  const validProjects = form.projects.filter(p => p.name);
+  if (validProjects.length > 0) {
+    lines.push('## 项目经历');
+    lines.push('');
+    validProjects.forEach(proj => {
+      let header = `**${proj.name}**`;
+      if (proj.timePeriod) header += ` | ${proj.timePeriod}`;
+      lines.push(header);
       
-      for (const proj of validProjects) {
-        const headerParts = [proj.name.trim()];
-        if (proj.role?.trim()) headerParts.push(proj.role.trim());
-        if (proj.timePeriod?.trim()) headerParts.push(proj.timePeriod.trim());
-        
-        lines.push(`### ${headerParts.join(' | ')}`);
+      const subLine: string[] = [];
+      if (proj.role) subLine.push(proj.role);
+      if (proj.location) subLine.push(proj.location);
+      if (subLine.length > 0) lines.push(subLine.join(' · '));
+      
+      const validBullets = proj.bullets.filter(b => b.trim());
+      if (validBullets.length > 0) {
         lines.push('');
-        
-        for (const bullet of proj.bullets) {
-          if (bullet.trim()) {
-            lines.push(`- ${bullet.trim()}`);
-          }
-        }
-        lines.push('');
+        lines.push(validBullets.join(' '));
       }
-    }
+      lines.push('');
+    });
   }
 
-  // 教育经历
-  if (form.education.length > 0) {
-    lines.push('## Education');
+  // 荣誉奖项
+  const validAwards = form.awards?.filter(a => a.name) || [];
+  if (validAwards.length > 0) {
+    lines.push('## 荣誉奖项');
     lines.push('');
-    
-    for (const edu of form.education) {
-      if (!edu.school.trim()) continue;
-      
-      const parts = [edu.school.trim()];
-      if (edu.major?.trim()) parts.push(edu.major.trim());
-      if (edu.degree?.trim()) parts.push(edu.degree.trim());
-      if (edu.timePeriod.trim()) parts.push(edu.timePeriod.trim());
-      
-      lines.push(`- ${parts.join(' | ')}`);
-    }
+    validAwards.forEach(award => {
+      let line = award.name;
+      if (award.time) line += ` | ${award.time}`;
+      lines.push(line);
+    });
     lines.push('');
   }
 

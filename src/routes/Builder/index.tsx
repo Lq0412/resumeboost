@@ -17,14 +17,18 @@ export default function Builder() {
     updateExperience,
     updateExperienceBullet,
     addExperienceBullet,
-    removeExperienceBullet,
     addProject,
     removeProject,
     updateProject,
     updateProjectBullet,
     addProjectBullet,
-    removeProjectBullet,
     updateSkills,
+    addSkillCategory,
+    removeSkillCategory,
+    updateSkillCategory,
+    addAward,
+    removeAward,
+    updateAward,
   } = useBuilderForm();
 
   const handleSubmit = () => {
@@ -81,6 +85,12 @@ export default function Builder() {
                   placeholder="张三"
                 />
                 <Input
+                  label="求职意向"
+                  value={form.basicInfo.jobTitle || ''}
+                  onChange={(v) => updateBasicInfo('jobTitle', v)}
+                  placeholder="Java开发工程师"
+                />
+                <Input
                   label="手机"
                   value={form.basicInfo.phone}
                   onChange={(v) => updateBasicInfo('phone', v)}
@@ -93,7 +103,13 @@ export default function Builder() {
                   placeholder="example@email.com"
                 />
                 <Input
-                  label="城市"
+                  label="求职状态"
+                  value={form.basicInfo.status || ''}
+                  onChange={(v) => updateBasicInfo('status', v)}
+                  placeholder="在职/离职/应届"
+                />
+                <Input
+                  label="所在城市"
                   value={form.basicInfo.city || ''}
                   onChange={(v) => updateBasicInfo('city', v)}
                   placeholder="北京"
@@ -105,7 +121,7 @@ export default function Builder() {
             <Section 
               title="教育经历" 
               onAdd={addEducation}
-              addText="+ 添加教育经历"
+              addText="+ 添加"
             >
               {form.education.map((edu, idx) => (
                 <div key={edu.id} className="border border-gray-200 rounded-lg p-3 mb-3 bg-gray-50">
@@ -116,40 +132,60 @@ export default function Builder() {
                     )}
                   </div>
                   <div className="grid grid-cols-2 gap-2">
-                    <Input
-                      value={edu.school}
-                      onChange={(v) => updateEducation(edu.id, 'school', v)}
-                      placeholder="学校名称"
-                      small
-                    />
-                    <Input
-                      value={edu.major || ''}
-                      onChange={(v) => updateEducation(edu.id, 'major', v)}
-                      placeholder="专业"
-                      small
-                    />
-                    <Input
-                      value={edu.degree || ''}
-                      onChange={(v) => updateEducation(edu.id, 'degree', v)}
-                      placeholder="学历（本科/硕士）"
-                      small
-                    />
-                    <Input
-                      value={edu.timePeriod}
-                      onChange={(v) => updateEducation(edu.id, 'timePeriod', v)}
-                      placeholder="2018.09 - 2022.06"
-                      small
-                    />
+                    <Input value={edu.school} onChange={(v) => updateEducation(edu.id, 'school', v)} placeholder="学校名称" small />
+                    <Input value={edu.major || ''} onChange={(v) => updateEducation(edu.id, 'major', v)} placeholder="专业" small />
+                    <Input value={edu.degree || ''} onChange={(v) => updateEducation(edu.id, 'degree', v)} placeholder="学历（本科/硕士）" small />
+                    <Input value={edu.timePeriod} onChange={(v) => updateEducation(edu.id, 'timePeriod', v)} placeholder="2019-09 ~ 2023-07" small />
                   </div>
                 </div>
               ))}
+            </Section>
+
+            {/* 专业技能 */}
+            <Section 
+              title="专业技能" 
+              onAdd={addSkillCategory}
+              addText="+ 添加技能类别"
+            >
+              {form.skillCategories && form.skillCategories.map((cat, idx) => (
+                <div key={cat.id} className="border border-gray-200 rounded-lg p-3 mb-3 bg-gray-50">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-xs text-gray-500">技能类别 {idx + 1}</span>
+                    {form.skillCategories!.length > 1 && (
+                      <button onClick={() => removeSkillCategory(cat.id)} className="text-xs text-red-500 hover:text-red-700">删除</button>
+                    )}
+                  </div>
+                  <Input 
+                    value={cat.name} 
+                    onChange={(v) => updateSkillCategory(cat.id, 'name', v)} 
+                    placeholder="类别名称（如：Java、数据库、网络编程）" 
+                    small 
+                  />
+                  <textarea
+                    value={cat.description}
+                    onChange={(e) => updateSkillCategory(cat.id, 'description', e.target.value)}
+                    className="w-full mt-2 px-2 py-1.5 text-sm border border-gray-200 rounded focus:ring-1 focus:ring-blue-500"
+                    rows={2}
+                    placeholder="技能描述..."
+                  />
+                </div>
+              ))}
+              {(!form.skillCategories || form.skillCategories.length === 0) && (
+                <textarea
+                  value={form.skills}
+                  onChange={(e) => updateSkills(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                  rows={3}
+                  placeholder="或直接输入技能列表：JavaScript, React, Node.js..."
+                />
+              )}
             </Section>
 
             {/* 工作经历 */}
             <Section 
               title="工作经历" 
               onAdd={addExperience}
-              addText="+ 添加工作经历"
+              addText="+ 添加"
             >
               {form.experience.map((exp, idx) => (
                 <div key={exp.id} className="border border-gray-200 rounded-lg p-3 mb-3 bg-gray-50">
@@ -159,46 +195,29 @@ export default function Builder() {
                       <button onClick={() => removeExperience(exp.id)} className="text-xs text-red-500 hover:text-red-700">删除</button>
                     )}
                   </div>
-                  <div className="grid grid-cols-3 gap-2 mb-2">
-                    <Input
-                      value={exp.company}
-                      onChange={(v) => updateExperience(exp.id, 'company', v)}
-                      placeholder="公司名称"
-                      small
-                    />
-                    <Input
-                      value={exp.position}
-                      onChange={(v) => updateExperience(exp.id, 'position', v)}
-                      placeholder="职位"
-                      small
-                    />
-                    <Input
-                      value={exp.timePeriod}
-                      onChange={(v) => updateExperience(exp.id, 'timePeriod', v)}
-                      placeholder="2022.07 - 至今"
-                      small
-                    />
+                  <div className="grid grid-cols-2 gap-2 mb-2">
+                    <Input value={exp.company} onChange={(v) => updateExperience(exp.id, 'company', v)} placeholder="公司名称" small />
+                    <Input value={exp.timePeriod} onChange={(v) => updateExperience(exp.id, 'timePeriod', v)} placeholder="2020-01 ~ 2021-01" small />
+                    <Input value={exp.position} onChange={(v) => updateExperience(exp.id, 'position', v)} placeholder="职位" small />
+                    <Input value={exp.location || ''} onChange={(v) => updateExperience(exp.id, 'location', v)} placeholder="工作地点" small />
                   </div>
-                  <div className="space-y-1">
-                    {exp.bullets.map((bullet, bIdx) => (
-                      <div key={bIdx} className="flex gap-1">
-                        <span className="text-gray-400 mt-1.5 text-sm">•</span>
-                        <input
-                          type="text"
-                          value={bullet}
-                          onChange={(e) => updateExperienceBullet(exp.id, bIdx, e.target.value)}
-                          className="flex-1 px-2 py-1 text-sm border border-gray-200 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                          placeholder="描述工作内容和成果..."
-                        />
-                        {exp.bullets.length > 1 && (
-                          <button onClick={() => removeExperienceBullet(exp.id, bIdx)} className="text-gray-400 hover:text-red-500 px-1">×</button>
-                        )}
-                      </div>
-                    ))}
-                    {exp.bullets.length < 5 && (
-                      <button onClick={() => addExperienceBullet(exp.id)} className="text-xs text-blue-600 hover:text-blue-800 ml-4">+ 添加描述</button>
-                    )}
-                  </div>
+                  <textarea
+                    value={exp.bullets.join('\n')}
+                    onChange={(e) => {
+                      const lines = e.target.value.split('\n');
+                      lines.forEach((line, i) => {
+                        if (i < exp.bullets.length) {
+                          updateExperienceBullet(exp.id, i, line);
+                        } else if (line.trim() && exp.bullets.length < 5) {
+                          addExperienceBullet(exp.id);
+                          setTimeout(() => updateExperienceBullet(exp.id, i, line), 0);
+                        }
+                      });
+                    }}
+                    className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded focus:ring-1 focus:ring-blue-500"
+                    rows={3}
+                    placeholder="工作内容描述（可多行）..."
+                  />
                 </div>
               ))}
             </Section>
@@ -207,7 +226,7 @@ export default function Builder() {
             <Section 
               title="项目经历" 
               onAdd={addProject}
-              addText="+ 添加项目"
+              addText="+ 添加"
               optional
             >
               {form.projects.map((proj, idx) => (
@@ -216,59 +235,57 @@ export default function Builder() {
                     <span className="text-xs text-gray-500">项目 {idx + 1}</span>
                     <button onClick={() => removeProject(proj.id)} className="text-xs text-red-500 hover:text-red-700">删除</button>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 mb-2">
-                    <Input
-                      value={proj.name}
-                      onChange={(v) => updateProject(proj.id, 'name', v)}
-                      placeholder="项目名称"
-                      small
-                    />
-                    <Input
-                      value={proj.role || ''}
-                      onChange={(v) => updateProject(proj.id, 'role', v)}
-                      placeholder="角色"
-                      small
-                    />
-                    <Input
-                      value={proj.timePeriod || ''}
-                      onChange={(v) => updateProject(proj.id, 'timePeriod', v)}
-                      placeholder="时间"
-                      small
-                    />
+                  <div className="grid grid-cols-2 gap-2 mb-2">
+                    <Input value={proj.name} onChange={(v) => updateProject(proj.id, 'name', v)} placeholder="项目名称" small />
+                    <Input value={proj.timePeriod || ''} onChange={(v) => updateProject(proj.id, 'timePeriod', v)} placeholder="2021-03 ~ 2021-05" small />
+                    <Input value={proj.role || ''} onChange={(v) => updateProject(proj.id, 'role', v)} placeholder="角色/职位" small />
+                    <Input value={proj.location || ''} onChange={(v) => updateProject(proj.id, 'location', v)} placeholder="地点" small />
                   </div>
-                  <div className="space-y-1">
-                    {proj.bullets.map((bullet, bIdx) => (
-                      <div key={bIdx} className="flex gap-1">
-                        <span className="text-gray-400 mt-1.5 text-sm">•</span>
-                        <input
-                          type="text"
-                          value={bullet}
-                          onChange={(e) => updateProjectBullet(proj.id, bIdx, e.target.value)}
-                          className="flex-1 px-2 py-1 text-sm border border-gray-200 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                          placeholder="描述项目内容..."
-                        />
-                        {proj.bullets.length > 1 && (
-                          <button onClick={() => removeProjectBullet(proj.id, bIdx)} className="text-gray-400 hover:text-red-500 px-1">×</button>
-                        )}
-                      </div>
-                    ))}
-                    {proj.bullets.length < 5 && (
-                      <button onClick={() => addProjectBullet(proj.id)} className="text-xs text-blue-600 hover:text-blue-800 ml-4">+ 添加描述</button>
-                    )}
-                  </div>
+                  <textarea
+                    value={proj.bullets.join('\n')}
+                    onChange={(e) => {
+                      const lines = e.target.value.split('\n');
+                      lines.forEach((line, i) => {
+                        if (i < proj.bullets.length) {
+                          updateProjectBullet(proj.id, i, line);
+                        } else if (line.trim() && proj.bullets.length < 5) {
+                          addProjectBullet(proj.id);
+                          setTimeout(() => updateProjectBullet(proj.id, i, line), 0);
+                        }
+                      });
+                    }}
+                    className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded focus:ring-1 focus:ring-blue-500"
+                    rows={3}
+                    placeholder="项目描述..."
+                  />
                 </div>
               ))}
             </Section>
 
-            {/* 技能 */}
-            <Section title="专业技能">
-              <textarea
-                value={form.skills}
-                onChange={(e) => updateSkills(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                rows={2}
-                placeholder="JavaScript, React, Node.js, Python, MySQL..."
-              />
+            {/* 荣誉奖项 */}
+            <Section 
+              title="荣誉奖项" 
+              onAdd={addAward}
+              addText="+ 添加"
+              optional
+            >
+              {form.awards && form.awards.map((award) => (
+                <div key={award.id} className="flex gap-2 mb-2">
+                  <Input 
+                    value={award.name} 
+                    onChange={(v) => updateAward(award.id, 'name', v)} 
+                    placeholder="奖项名称" 
+                    small 
+                  />
+                  <Input 
+                    value={award.time || ''} 
+                    onChange={(v) => updateAward(award.id, 'time', v)} 
+                    placeholder="时间" 
+                    small 
+                  />
+                  <button onClick={() => removeAward(award.id)} className="text-gray-400 hover:text-red-500 px-2">×</button>
+                </div>
+              ))}
             </Section>
           </div>
 
@@ -279,7 +296,7 @@ export default function Builder() {
                 <span className="text-sm font-medium text-gray-700">📄 简历预览</span>
                 <span className="text-xs text-gray-500">实时更新</span>
               </div>
-              <div className="flex-1 overflow-auto p-6">
+              <div className="flex-1 overflow-auto">
                 <ResumePreview form={form} />
               </div>
             </div>
@@ -290,17 +307,13 @@ export default function Builder() {
   );
 }
 
-// 简历预览组件
+// 简历预览组件 - 参照专业简历模板
 function ResumePreview({ form }: { form: ReturnType<typeof useBuilderForm>['form'] }) {
-  const hasBasicInfo = form.basicInfo.name || form.basicInfo.phone || form.basicInfo.email;
-  const hasEducation = form.education.some(e => e.school);
-  const hasExperience = form.experience.some(e => e.company || e.position);
-  const hasProjects = form.projects.some(p => p.name);
-  const hasSkills = form.skills.trim();
+  const hasContent = form.basicInfo.name || form.basicInfo.phone || form.education.some(e => e.school);
 
-  if (!hasBasicInfo && !hasEducation && !hasExperience && !hasProjects && !hasSkills) {
+  if (!hasContent) {
     return (
-      <div className="h-full flex items-center justify-center text-gray-400">
+      <div className="h-full flex items-center justify-center text-gray-400 p-8">
         <div className="text-center">
           <div className="text-4xl mb-2">📝</div>
           <p>开始填写左侧表单</p>
@@ -311,70 +324,72 @@ function ResumePreview({ form }: { form: ReturnType<typeof useBuilderForm>['form
   }
 
   return (
-    <div className="resume-preview text-sm leading-relaxed" style={{ fontFamily: "'Segoe UI', Arial, sans-serif" }}>
-      {/* 姓名和联系方式 */}
-      {hasBasicInfo && (
-        <div className="text-center mb-4 pb-3 border-b border-gray-200">
-          {form.basicInfo.name && (
-            <h1 className="text-xl font-bold text-gray-900 mb-1">{form.basicInfo.name}</h1>
-          )}
-          <div className="text-gray-600 text-xs space-x-3">
-            {form.basicInfo.phone && <span>📱 {form.basicInfo.phone}</span>}
-            {form.basicInfo.email && <span>✉️ {form.basicInfo.email}</span>}
-            {form.basicInfo.city && <span>📍 {form.basicInfo.city}</span>}
-          </div>
+    <div className="p-6 text-gray-800" style={{ fontFamily: "'Microsoft YaHei', 'PingFang SC', sans-serif", fontSize: '12px', lineHeight: '1.6' }}>
+      {/* 头部：姓名 + 联系方式 */}
+      <div className="mb-4">
+        {form.basicInfo.name && (
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">{form.basicInfo.name}</h1>
+        )}
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-gray-600 text-xs">
+          {form.basicInfo.phone && <span>📱 {form.basicInfo.phone}</span>}
+          {form.basicInfo.email && <span>✉️ {form.basicInfo.email}</span>}
+          {form.basicInfo.status && <span>🔵 {form.basicInfo.status}</span>}
+          {form.basicInfo.jobTitle && <span>💼 {form.basicInfo.jobTitle}</span>}
         </div>
-      )}
+      </div>
 
       {/* 教育经历 */}
-      {hasEducation && (
+      {form.education.some(e => e.school) && (
         <div className="mb-4">
-          <h2 className="text-sm font-bold text-gray-800 border-b border-gray-300 pb-1 mb-2">教育背景</h2>
+          <h2 className="text-sm font-bold text-gray-900 border-b-2 border-gray-800 pb-1 mb-3">教育经历</h2>
           {form.education.filter(e => e.school).map((edu) => (
             <div key={edu.id} className="mb-2">
-              <div className="flex justify-between items-baseline">
-                <span className="font-medium">{edu.school}</span>
-                <span className="text-xs text-gray-500">{edu.timePeriod}</span>
-              </div>
-              {(edu.major || edu.degree) && (
-                <div className="text-gray-600 text-xs">
-                  {edu.degree && <span>{edu.degree}</span>}
-                  {edu.degree && edu.major && <span> · </span>}
-                  {edu.major && <span>{edu.major}</span>}
+              <div className="flex justify-between items-start">
+                <div>
+                  <span className="font-semibold">{edu.school}</span>
+                  {edu.major && <span className="text-gray-600 ml-2">{edu.major}</span>}
                 </div>
-              )}
+                <span className="text-gray-500 text-xs whitespace-nowrap">{edu.timePeriod}</span>
+              </div>
+              {edu.degree && <div className="text-gray-600 text-xs">{edu.degree}</div>}
             </div>
           ))}
         </div>
       )}
 
       {/* 专业技能 */}
-      {hasSkills && (
+      {(form.skillCategories?.some(c => c.name) || form.skills) && (
         <div className="mb-4">
-          <h2 className="text-sm font-bold text-gray-800 border-b border-gray-300 pb-1 mb-2">专业技能</h2>
-          <p className="text-gray-700 text-xs">{form.skills}</p>
+          <h2 className="text-sm font-bold text-gray-900 border-b-2 border-gray-800 pb-1 mb-3">专业技能</h2>
+          {form.skillCategories?.filter(c => c.name).map((cat) => (
+            <div key={cat.id} className="mb-2">
+              <span className="font-semibold">{cat.name}</span>
+              {cat.description && <p className="text-gray-700 mt-0.5">{cat.description}</p>}
+            </div>
+          ))}
+          {!form.skillCategories?.length && form.skills && (
+            <p className="text-gray-700">{form.skills}</p>
+          )}
         </div>
       )}
 
       {/* 工作经历 */}
-      {hasExperience && (
+      {form.experience.some(e => e.company) && (
         <div className="mb-4">
-          <h2 className="text-sm font-bold text-gray-800 border-b border-gray-300 pb-1 mb-2">工作经历</h2>
-          {form.experience.filter(e => e.company || e.position).map((exp) => (
+          <h2 className="text-sm font-bold text-gray-900 border-b-2 border-gray-800 pb-1 mb-3">工作经历</h2>
+          {form.experience.filter(e => e.company).map((exp) => (
             <div key={exp.id} className="mb-3">
-              <div className="flex justify-between items-baseline">
-                <span className="font-medium">{exp.company}{exp.position && ` · ${exp.position}`}</span>
-                <span className="text-xs text-gray-500">{exp.timePeriod}</span>
+              <div className="flex justify-between items-start">
+                <div>
+                  <span className="font-semibold">{exp.company}</span>
+                </div>
+                <span className="text-gray-500 text-xs whitespace-nowrap">{exp.timePeriod}</span>
+              </div>
+              <div className="text-gray-600 text-xs mb-1">
+                {exp.position}{exp.location && ` · ${exp.location}`}
               </div>
               {exp.bullets.filter(b => b.trim()).length > 0 && (
-                <ul className="mt-1 space-y-0.5">
-                  {exp.bullets.filter(b => b.trim()).map((bullet, i) => (
-                    <li key={i} className="text-gray-700 text-xs flex">
-                      <span className="mr-1">•</span>
-                      <span>{bullet}</span>
-                    </li>
-                  ))}
-                </ul>
+                <p className="text-gray-700">{exp.bullets.filter(b => b.trim()).join(' ')}</p>
               )}
             </div>
           ))}
@@ -382,25 +397,38 @@ function ResumePreview({ form }: { form: ReturnType<typeof useBuilderForm>['form
       )}
 
       {/* 项目经历 */}
-      {hasProjects && (
+      {form.projects.some(p => p.name) && (
         <div className="mb-4">
-          <h2 className="text-sm font-bold text-gray-800 border-b border-gray-300 pb-1 mb-2">项目经历</h2>
+          <h2 className="text-sm font-bold text-gray-900 border-b-2 border-gray-800 pb-1 mb-3">项目经历</h2>
           {form.projects.filter(p => p.name).map((proj) => (
             <div key={proj.id} className="mb-3">
-              <div className="flex justify-between items-baseline">
-                <span className="font-medium">{proj.name}{proj.role && ` · ${proj.role}`}</span>
-                {proj.timePeriod && <span className="text-xs text-gray-500">{proj.timePeriod}</span>}
+              <div className="flex justify-between items-start">
+                <div>
+                  <span className="font-semibold">{proj.name}</span>
+                </div>
+                {proj.timePeriod && <span className="text-gray-500 text-xs whitespace-nowrap">{proj.timePeriod}</span>}
               </div>
-              {proj.bullets.filter(b => b.trim()).length > 0 && (
-                <ul className="mt-1 space-y-0.5">
-                  {proj.bullets.filter(b => b.trim()).map((bullet, i) => (
-                    <li key={i} className="text-gray-700 text-xs flex">
-                      <span className="mr-1">•</span>
-                      <span>{bullet}</span>
-                    </li>
-                  ))}
-                </ul>
+              {(proj.role || proj.location) && (
+                <div className="text-gray-600 text-xs mb-1">
+                  {proj.role}{proj.location && ` · ${proj.location}`}
+                </div>
               )}
+              {proj.bullets.filter(b => b.trim()).length > 0 && (
+                <p className="text-gray-700">{proj.bullets.filter(b => b.trim()).join(' ')}</p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* 荣誉奖项 */}
+      {form.awards?.some(a => a.name) && (
+        <div className="mb-4">
+          <h2 className="text-sm font-bold text-gray-900 border-b-2 border-gray-800 pb-1 mb-3">荣誉奖项</h2>
+          {form.awards.filter(a => a.name).map((award) => (
+            <div key={award.id} className="flex justify-between mb-1">
+              <span>{award.name}</span>
+              {award.time && <span className="text-gray-500 text-xs">{award.time}</span>}
             </div>
           ))}
         </div>
