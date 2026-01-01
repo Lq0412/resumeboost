@@ -122,28 +122,28 @@
 - [ ] 7. Checkpoint - 前端页面基础完成
   - 确保所有测试通过，如有问题请询问用户
 
-- [ ] 8. Workspace Page - 输入区实现
-  - [ ] 8.1 实现输入面板组件
+- [x] 8. Workspace Page - 输入区实现
+  - [x] 8.1 实现输入面板组件
     - PDF 上传区（拖拽 + 点击选择）
     - 简历文本框（Markdown/纯文本）
     - JD 文本框
     - 脱敏开关
     - _Requirements: 3.5, 4.6, 4.7_
 
-  - [ ] 8.2 实现操作按钮组
+  - [x] 8.2 实现操作按钮组
     - "一键分析" 按钮（resumeText 非空时可用）
     - "ATS 匹配" 按钮（jdText 非空时可用）
     - "清空" 按钮
     - _Requirements: 5.4, 6.6, 11.3_
 
-  - [ ] 8.3 集成 PDF 提取功能
+  - [x] 8.3 集成 PDF 提取功能
     - 文件选择后调用 PDF 提取
     - 成功后填充简历文本框
     - 失败时显示错误提示
     - _Requirements: 3.2, 3.4, 3.5_
 
-- [ ] 9. Workspace Page - 结果区实现
-  - [ ] 9.1 实现诊断结果 Tab
+- [x] 9. Workspace Page - 结果区实现
+  - [x] 9.1 实现诊断结果 Tab
     - 展示 issues 列表（最多 10 条）
     - 展示 actions 列表（最多 10 条）
     - 展示 examples（可选）
@@ -153,7 +153,7 @@
     - **Property 7: Diagnosis Result Constraints**
     - **Validates: Requirements 5.2, 5.3**
 
-  - [ ] 9.3 实现匹配结果 Tab
+  - [x] 9.3 实现匹配结果 Tab
     - 展示匹配分数（0-100）
     - 展示缺失关键词（10-20 个）
     - 展示命中关键词（最多 20 个）
@@ -164,7 +164,7 @@
     - **Property 8: Match Result Constraints**
     - **Validates: Requirements 6.2, 6.3, 6.4**
 
-  - [ ] 9.5 实现改写 Tab
+  - [x] 9.5 实现改写 Tab
     - 待改写文本输入框
     - 生成两版改写按钮
     - 保守版/强化版并排展示
@@ -176,7 +176,7 @@
     - **Property 9: Rewrite Structure Preservation**
     - **Validates: Requirements 7.3**
 
-  - [ ] 9.7 实现终稿 Tab
+  - [x] 9.7 实现终稿 Tab
     - 生成终稿按钮
     - HTML 预览区域
     - 打印/导出 PDF 按钮
