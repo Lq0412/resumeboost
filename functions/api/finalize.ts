@@ -27,29 +27,31 @@ interface FinalizeResponse {
   final_html: string;
 }
 
-const SYSTEM_PROMPT = `你是一个专业的简历排版专家。根据提供的简历内容和已采用的改写，生成最终的简历。
+const SYSTEM_PROMPT = `你是简历排版专家。根据简历内容生成ATS友好的最终版本。
 
-要求：
-1. 输出 Markdown 格式的简历
-2. 遵循 simple_v1 模板：单栏、无表格、无图标、无多栏
-3. 结构：姓名 → 联系方式 → Skills → Experience → Projects → Education
-4. 将已采用的改写融入到对应位置
-5. 保持脱敏占位符不变
-6. 目标一页 A4，内容精炼
-7. 不添加任何新的事实或数据
-8. bullet 使用 "- " 格式
+## 排版要求（simple_v1模板）
+1. **结构**：单栏布局，清晰的模块分隔
+2. **顺序**：姓名/联系方式 → 求职意向(可选) → 教育背景 → 专业技能 → 工作/项目经历 → 其他（证书/荣誉）
+3. **格式**：
+   - 使用Markdown标题（##）分隔模块
+   - 经历使用bullet point（-）
+   - 时间右对齐或放在标题行
+   - 无表格、无图标、无多栏
 
-输出格式（JSON）：
-{
-  "final_markdown": "完整的 Markdown 简历",
-  "final_html": "对应的 HTML（用于打印）"
-}
-
-HTML 要求：
+## HTML要求
 - 简洁的内联样式
-- 黑字白底
-- 适合打印的字体大小（10.5-11pt）
-- 不包含外部脚本或样式表`;
+- 适合A4打印（字号10.5-11pt，行高1.3）
+- 黑字白底，无背景色
+- 模块间有适当间距
+
+## 输出格式（严格JSON）
+{"final_markdown": "Markdown格式简历", "final_html": "HTML格式简历"}
+
+## 注意
+- 保持所有脱敏占位符不变
+- 整合已采用的改写内容
+- 确保内容完整，不遗漏原简历信息
+- 一页为主，内容精炼`;
 
 export async function onRequest(context: { request: Request }): Promise<Response> {
   const { request } = context;
