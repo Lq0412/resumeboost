@@ -4,6 +4,100 @@
 
 import { showToast } from '../components';
 
+// 开发模式配置
+const isDev = import.meta.env.DEV;
+const USE_MOCK = false; // 设为 true 使用模拟数据，false 直接调用 DeepSeek
+
+// DeepSeek API 配置（仅开发模式）
+const DEEPSEEK_API_KEY = import.meta.env.VITE_DEEPSEEK_API_KEY || '';
+const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
+
+// Prompts
+const PROMPTS = {
+  analyze: `你是一个专业的简历优化顾问。分析用户的简历，找出问题并提供可执行的改进建议。
+输出格式（JSON）：{"issues": [{"title": "问题标题", "why": "原因", "how": "改进方法"}], "actions": ["建议1"], "examples": []}
+注意：issues 最多10条，actions 最多10条，保持脱敏占位符不变。`,
+
+  match: `你是一个 ATS 专家。分析简历与职位描述的匹配度。
+输出格式（JSON）：{"score": 75, "missing_keywords": ["关键词1"], "hit_keywords": ["命中词1"], "notes": "一句话总结"}
+score 为 0-100 整数，missing_keywords 10-20个，hit_keywords 最多20个。`,
+
+  rewrite_conservative: `你是简历优化专家。对文本进行保守改写，贴近原文，主要优化表达。
+输出格式（JSON）：{"rewritten_text": "改写后文本", "cautions": []}
+保持原有结构，不添加新事实，保持脱敏占位符不变。`,
+
+  rewrite_strong: `你是简历优化专家。对文本进行强化改写，强调影响力和成果。
+输出格式（JSON）：{"rewritten_text": "改写后文本", "cautions": ["请将X%替换为实际数据"]}
+如需量化但无数据，用 X%/X+ 占位并在 cautions 提醒。保持脱敏占位符不变。`,
+
+  finalize: `你是简历排版专家。生成最终简历。
+输出格式（JSON）：{"final_markdown": "Markdown简历", "final_html": "HTML简历"}
+遵循 simple_v1 模板：单栏、无表格、无图标。保持脱敏占位符不变。`
+};
+
+/**
+ * 开发模式直接调用 DeepSeek API
+ */
+async function callDeepSeekDirect<T>(url: string, options: RequestInit): Promise<T> {
+  const body = JSON.parse(options.body as string);
+  let systemPrompt = '';
+  let userPrompt = '';
+
+  if (url.includes('/api/analyze')) {
+    systemPrompt = PROMPTS.analyze;
+    userPrompt = `分析简历：\n${body.resume_text}${body.jd_text ? `\n\nJD：\n${body.jd_text}` : ''}`;
+  } else if (url.includes('/api/match')) {
+    systemPrompt = PROMPTS.match;
+    userPrompt = `简历：\n${body.resume_text}\n\nJD：\n${body.jd_text}`;
+  } else if (url.includes('/api/rewrite')) {
+    systemPrompt = body.style === 'conservative' ? PROMPTS.rewrite_conservative : PROMPTS.rewrite_strong;
+    userPrompt = `改写：\n${body.source_text}${body.jd_text ? `\n\n参考JD：\n${body.jd_text}` : ''}`;
+  } else if (url.includes('/api/finalize')) {
+    systemPrompt = PROMPTS.finalize;
+    let rewritesInfo = '';
+    if (body.applied_rewrites?.length > 0) {
+      rewritesInfo = '\n\n已采用改写：\n' + body.applied_rewrites.map((r: AppliedRewriteItem, i: number) => 
+        `${i+1}. 原：${r.before_text}\n   改：${r.after_text}`
+      ).join('\n');
+    }
+    userPrompt = `生成终稿：\n${body.resume_text}${rewritesInfo}`;
+  }
+
+  const response = await fetch(DEEPSEEK_API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: 'deepseek-chat',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      temperature: 0.7,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new APIError('MODEL_ERROR', 'AI 调用失败', response.status);
+  }
+
+  const data = await response.json();
+  const content = data.choices?.[0]?.message?.content || '';
+  
+  // 解析 JSON
+  try {
+    const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/);
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[1]) as T;
+    }
+    return JSON.parse(content) as T;
+  } catch {
+    throw new APIError('PARSE_ERROR', 'AI 响应解析失败', 500);
+  }
+}
+
 // API 错误类
 export class APIError extends Error {
   code: string;
@@ -95,6 +189,23 @@ export interface FinalizeResponse {
  */
 async function fetchJson<T>(url: string, options: RequestInit): Promise<T> {
   try {
+    // 开发模式且启用 mock
+    if (isDev && USE_MOCK) {
+      const { mockFetch } = await import('./mock-api');
+      const response = await mockFetch(url, options);
+      const data = await response.json();
+      if (!response.ok) {
+        const error = data.error || {};
+        throw new APIError(error.code || 'UNKNOWN_ERROR', error.message || '请求失败', response.status, error.retry_after_sec);
+      }
+      return data as T;
+    }
+
+    // 开发模式直接调用 DeepSeek
+    if (isDev && DEEPSEEK_API_KEY) {
+      return await callDeepSeekDirect<T>(url, options);
+    }
+
     const response = await fetch(url, {
       ...options,
       headers: {

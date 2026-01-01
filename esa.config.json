@@ -27,6 +27,6 @@
   },
   "env": {
     "AI_API_KEY": "",
-    "AI_API_URL": "https://api.openai.com/v1/chat/completions"
+    "AI_API_URL": "https://api.deepseek.com/v1/chat/completions"
   }
 }
