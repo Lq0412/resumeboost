@@ -37,7 +37,7 @@ export default function Builder() {
     }
 
     const markdown = formToMarkdown(form);
-    const { masked, map } = mask(markdown);
+    const { map } = mask(markdown);
     
     saveSession({
       resumeText: markdown,

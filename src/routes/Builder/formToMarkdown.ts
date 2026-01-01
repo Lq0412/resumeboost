@@ -2,7 +2,8 @@
  * 将表单数据转换为 Markdown 格式（Simple_V1 模板）
  */
 
-import { BuilderFormState, processSkills } from '../../lib/validation';
+import type { BuilderFormState } from '../../lib/validation';
+import { processSkills } from '../../lib/validation';
 
 export function formToMarkdown(form: BuilderFormState): string {
   const lines: string[] = [];

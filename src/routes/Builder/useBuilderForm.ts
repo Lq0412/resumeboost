@@ -3,15 +3,15 @@
  */
 
 import { useState, useCallback } from 'react';
-import { 
+import type { 
   BuilderFormState, 
   BasicInfo, 
   EducationEntry, 
   ExperienceEntry, 
   ProjectEntry,
-  validateBuilderForm,
   FormValidationResult 
 } from '../../lib/validation';
+import { validateBuilderForm } from '../../lib/validation';
 
 // 生成唯一 ID
 const generateId = () => Math.random().toString(36).substring(2, 9);

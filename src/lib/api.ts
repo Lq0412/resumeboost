@@ -6,14 +6,16 @@ import { showToast } from '../components';
 
 // API 错误类
 export class APIError extends Error {
-  constructor(
-    public code: string,
-    message: string,
-    public status: number,
-    public retryAfterSec?: number
-  ) {
+  code: string;
+  status: number;
+  retryAfterSec?: number;
+
+  constructor(code: string, message: string, status: number, retryAfterSec?: number) {
     super(message);
     this.name = 'APIError';
+    this.code = code;
+    this.status = status;
+    this.retryAfterSec = retryAfterSec;
   }
 }
 

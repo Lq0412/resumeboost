@@ -1,0 +1,32 @@
+{
+  "name": "resumeboost",
+  "build": {
+    "command": "npm run build",
+    "output": "dist"
+  },
+  "functions": {
+    "directory": "functions",
+    "routes": [
+      {
+        "pattern": "/api/analyze",
+        "function": "api/analyze"
+      },
+      {
+        "pattern": "/api/match",
+        "function": "api/match"
+      },
+      {
+        "pattern": "/api/rewrite",
+        "function": "api/rewrite"
+      },
+      {
+        "pattern": "/api/finalize",
+        "function": "api/finalize"
+      }
+    ]
+  },
+  "env": {
+    "AI_API_KEY": "",
+    "AI_API_URL": "https://api.openai.com/v1/chat/completions"
+  }
+}

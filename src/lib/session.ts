@@ -2,7 +2,8 @@
  * 会话存储服务 - 使用 sessionStorage 存储数据
  */
 
-import { MaskingMap, serializeMap, deserializeMap, createEmptyMap } from './masking';
+import type { MaskingMap } from './masking';
+import { serializeMap, deserializeMap, createEmptyMap } from './masking';
 
 export interface AppliedRewrite {
   id: string;

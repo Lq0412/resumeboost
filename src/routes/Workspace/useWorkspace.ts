@@ -3,23 +3,23 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import type { AppliedRewrite, MaskingMap } from '../../lib';
 import { 
   loadSession, 
   saveSession, 
-  clearSession, 
-  AppliedRewrite,
-  MaskingMap,
+  clearSession,
   mask,
   unmask,
   createEmptyMap,
 } from '../../lib';
+import type {
+  AnalyzeResponse,
+  MatchResponse,
+  FinalizeResponse,
+} from '../../lib/api';
 import { 
   api, 
   handleAPIError,
-  AnalyzeResponse,
-  MatchResponse,
-  RewriteResponse,
-  FinalizeResponse,
 } from '../../lib/api';
 import { validateResumeText, validateJDText, validateSourceText } from '../../lib/validation';
 import { showToast } from '../../components';
@@ -97,7 +97,7 @@ export function useWorkspace() {
 
   // 更新简历文本
   const setResumeText = useCallback((text: string) => {
-    const { masked, map } = mask(text);
+    const { map } = mask(text);
     setState((prev) => ({
       ...prev,
       resumeText: text,
