@@ -416,7 +416,7 @@ function ResumePreview({ form }: { form: ReturnType<typeof useBuilderForm>['form
                   <span className="font-semibold">{proj.name}</span>
                   {proj.link && (
                     <a href={proj.link} target="_blank" rel="noopener noreferrer" className="text-blue-600 text-xs ml-2 hover:underline">
-                      🔗 链接
+                      {proj.link}
                     </a>
                   )}
                 </div>
