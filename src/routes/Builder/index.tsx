@@ -106,9 +106,9 @@ export default function Builder() {
     try {
       // 根据密度模式设置样式参数
       const pdfStyles = {
-        normal: { padding: 40, titleSize: 24, sectionTitle: 15, text: 14, smallText: 13, sectionGap: 20, itemGap: 10, lineHeight: 1.5, photoW: 80, photoH: 112 },
-        compact: { padding: 32, titleSize: 20, sectionTitle: 14, text: 13, smallText: 12, sectionGap: 14, itemGap: 8, lineHeight: 1.4, photoW: 72, photoH: 100 },
-        tight: { padding: 24, titleSize: 18, sectionTitle: 12, text: 12, smallText: 11, sectionGap: 10, itemGap: 6, lineHeight: 1.3, photoW: 64, photoH: 88 },
+        normal: { padding: 40, titleSize: 24, sectionTitle: 15, text: 14, smallText: 13, sectionGap: 20, itemGap: 10, lineHeight: 1.5, photoW: 80, photoH: 112, h2Pb: 10 },
+        compact: { padding: 32, titleSize: 20, sectionTitle: 14, text: 13, smallText: 12, sectionGap: 14, itemGap: 8, lineHeight: 1.4, photoW: 72, photoH: 100, h2Pb: 8 },
+        tight: { padding: 24, titleSize: 18, sectionTitle: 12, text: 12, smallText: 11, sectionGap: 10, itemGap: 6, lineHeight: 1.3, photoW: 64, photoH: 88, h2Pb: 6 },
       };
       const s = pdfStyles[densityMode];
 
@@ -125,8 +125,8 @@ export default function Builder() {
         return `${start} ~ ${ey}${em ? `-${em}` : ''}`;
       };
 
-      // 构建纯 HTML 内容，所有样式内联
-      let html = `<div style="width:794px;min-height:1123px;padding:${s.padding}px;background:#fff;font-family:'Microsoft YaHei','PingFang SC',sans-serif;color:#374151;font-size:${s.text}px;line-height:${s.lineHeight};">`;
+      // 构建纯 HTML 内容，所有样式内联（去掉 min-height 避免空白页）
+      let html = `<div style="width:794px;padding:${s.padding}px;background:#fff;font-family:'Microsoft YaHei','PingFang SC',sans-serif;color:#374151;font-size:${s.text}px;line-height:${s.lineHeight};">`;
       
       // 头部
       html += `<div style="display:flex;margin-bottom:${s.sectionGap}px;">`;
@@ -156,10 +156,10 @@ export default function Builder() {
       // 教育经历
       const validEdu = form.education.filter(e => e.school);
       if (validEdu.length > 0) {
-        html += `<div style="margin-bottom:${s.sectionGap}px;"><h2 style="font-size:${s.sectionTitle}px;font-weight:bold;color:#111827;border-bottom:2px solid #1f2937;padding-bottom:4px;margin:0 0 ${s.itemGap}px 0;">教育经历</h2>`;
+        html += `<div style="margin-bottom:${s.sectionGap}px;"><h2 style="font-size:${s.sectionTitle}px;font-weight:bold;color:#111827;border-bottom:2px solid #1f2937;padding-bottom:${s.h2Pb}px;margin:0 0 ${s.itemGap}px 0;">教育经历</h2>`;
         validEdu.forEach(edu => {
-          html += `<div style="margin-bottom:${s.itemGap}px;"><div style="display:flex;justify-content:space-between;"><span style="font-weight:600;">${edu.school}${edu.major ? ` <span style="color:#4b5563;font-weight:normal;">${edu.major}</span>` : ''}</span><span style="color:#6b7280;font-size:${s.smallText}px;">${formatTime(edu.startYear, edu.startMonth, edu.endYear, edu.endMonth)}</span></div>`;
-          if (edu.degree) html += `<div style="color:#4b5563;font-size:${s.smallText}px;">${edu.degree}</div>`;
+          html += `<div style="margin-bottom:${s.itemGap}px;"><div style="display:flex;justify-content:space-between;"><span style="font-weight:600;">${edu.school}${edu.major ? `<span style="color:#4b5563;font-weight:normal;margin-left:12px;">${edu.major}</span>` : ''}${edu.degree ? `<span style="color:#6b7280;font-weight:normal;margin-left:8px;">${edu.degree}</span>` : ''}</span><span style="color:#6b7280;font-size:${s.smallText}px;">${formatTime(edu.startYear, edu.startMonth, edu.endYear, edu.endMonth)}</span></div>`;
+          if (edu.description) html += `<p style="color:#374151;font-size:${s.smallText}px;margin:4px 0 0 0;">${edu.description}</p>`;
           html += `</div>`;
         });
         html += `</div>`;
@@ -168,7 +168,7 @@ export default function Builder() {
       // 专业技能
       const validSkills = form.skillCategories?.filter(c => c.name) || [];
       if (validSkills.length > 0 || form.skills) {
-        html += `<div style="margin-bottom:${s.sectionGap}px;"><h2 style="font-size:${s.sectionTitle}px;font-weight:bold;color:#111827;border-bottom:2px solid #1f2937;padding-bottom:4px;margin:0 0 ${s.itemGap}px 0;">专业技能</h2>`;
+        html += `<div style="margin-bottom:${s.sectionGap}px;"><h2 style="font-size:${s.sectionTitle}px;font-weight:bold;color:#111827;border-bottom:2px solid #1f2937;padding-bottom:${s.h2Pb}px;margin:0 0 ${s.itemGap}px 0;">专业技能</h2>`;
         if (validSkills.length > 0) {
           validSkills.forEach(cat => {
             html += `<div style="margin-bottom:${s.itemGap - 2}px;"><span style="font-weight:600;">${cat.name}</span>`;
@@ -184,12 +184,11 @@ export default function Builder() {
       // 工作经历
       const validExp = form.experience.filter(e => e.company);
       if (validExp.length > 0) {
-        html += `<div style="margin-bottom:${s.sectionGap}px;"><h2 style="font-size:${s.sectionTitle}px;font-weight:bold;color:#111827;border-bottom:2px solid #1f2937;padding-bottom:4px;margin:0 0 ${s.itemGap}px 0;">工作经历</h2>`;
+        html += `<div style="margin-bottom:${s.sectionGap}px;"><h2 style="font-size:${s.sectionTitle}px;font-weight:bold;color:#111827;border-bottom:2px solid #1f2937;padding-bottom:${s.h2Pb}px;margin:0 0 8px 0;">工作经历</h2>`;
         validExp.forEach(exp => {
-          html += `<div style="margin-bottom:${s.itemGap}px;"><div style="display:flex;justify-content:space-between;"><span style="font-weight:600;">${exp.company}</span><span style="color:#6b7280;font-size:${s.smallText}px;">${formatTime(exp.startYear, exp.startMonth, exp.endYear, exp.endMonth)}</span></div>`;
-          html += `<div style="color:#4b5563;font-size:${s.smallText}px;">${exp.position}${exp.location ? ` · ${exp.location}` : ''}</div>`;
+          html += `<div style="margin-bottom:${s.itemGap}px;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;"><span style="display:flex;align-items:center;"><span style="font-weight:600;">${exp.company}</span>${exp.position ? `<span style="color:#4b5563;margin-left:8px;">${exp.position}</span>` : ''}${exp.location ? `<span style="color:#6b7280;margin-left:8px;">${exp.location}</span>` : ''}</span><span style="color:#6b7280;font-size:${s.smallText}px;">${formatTime(exp.startYear, exp.startMonth, exp.endYear, exp.endMonth)}</span></div>`;
           const bullets = exp.bullets.filter(b => b && b.trim());
-          if (bullets.length > 0) html += `<p style="color:#374151;margin:4px 0 0 0;font-size:${s.smallText}px;">${bullets.join(' ')}</p>`;
+          if (bullets.length > 0) html += `<p style="color:#374151;margin:0;font-size:${s.smallText}px;">${bullets.join(' ')}</p>`;
           html += `</div>`;
         });
         html += `</div>`;
@@ -198,13 +197,12 @@ export default function Builder() {
       // 项目经历
       const validProj = form.projects.filter(p => p.name);
       if (validProj.length > 0) {
-        html += `<div style="margin-bottom:${s.sectionGap}px;"><h2 style="font-size:${s.sectionTitle}px;font-weight:bold;color:#111827;border-bottom:2px solid #1f2937;padding-bottom:4px;margin:0 0 ${s.itemGap}px 0;">项目经历</h2>`;
+        html += `<div style="margin-bottom:${s.sectionGap}px;"><h2 style="font-size:${s.sectionTitle}px;font-weight:bold;color:#111827;border-bottom:2px solid #1f2937;padding-bottom:${s.h2Pb}px;margin:0 0 8px 0;">项目经历</h2>`;
         validProj.forEach(proj => {
-          html += `<div style="margin-bottom:${s.itemGap}px;"><div style="display:flex;justify-content:space-between;"><span><span style="font-weight:600;">${proj.name}</span>${proj.link ? ` <a href="${proj.link}" style="color:#2563eb;font-size:${s.smallText - 1}px;margin-left:8px;">${proj.link}</a>` : ''}</span><span style="color:#6b7280;font-size:${s.smallText}px;">${formatTime(proj.startYear, proj.startMonth, proj.endYear, proj.endMonth)}</span></div>`;
-          if (proj.role) html += `<div style="color:#4b5563;font-size:${s.smallText}px;">${proj.role}</div>`;
+          html += `<div style="margin-bottom:${s.itemGap}px;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;"><span style="display:flex;align-items:center;"><span style="font-weight:600;">${proj.name}</span>${proj.role ? `<span style="color:#4b5563;margin-left:8px;">${proj.role}</span>` : ''}${proj.link ? ` <a href="${proj.link}" style="color:#2563eb;font-size:${s.smallText - 1}px;margin-left:8px;">${proj.link}</a>` : ''}</span><span style="color:#6b7280;font-size:${s.smallText}px;">${formatTime(proj.startYear, proj.startMonth, proj.endYear, proj.endMonth)}</span></div>`;
           const bullets = proj.bullets.filter(b => b && b.trim());
           if (bullets.length > 0) {
-            html += `<ul style="margin:4px 0 0 0;padding-left:16px;">`;
+            html += `<ul style="margin:0;padding-left:16px;">`;
             bullets.forEach(b => { html += `<li style="color:#374151;font-size:${s.smallText}px;margin-bottom:2px;">${b}</li>`; });
             html += `</ul>`;
           }
@@ -216,7 +214,7 @@ export default function Builder() {
       // 荣誉奖项
       const validAwards = form.awards?.filter(a => a.name) || [];
       if (validAwards.length > 0) {
-        html += `<div style="margin-bottom:${s.sectionGap}px;"><h2 style="font-size:${s.sectionTitle}px;font-weight:bold;color:#111827;border-bottom:2px solid #1f2937;padding-bottom:4px;margin:0 0 ${s.itemGap}px 0;">荣誉奖项</h2>`;
+        html += `<div style="margin-bottom:${s.sectionGap}px;"><h2 style="font-size:${s.sectionTitle}px;font-weight:bold;color:#111827;border-bottom:2px solid #1f2937;padding-bottom:${s.h2Pb}px;margin:0 0 ${s.itemGap}px 0;">荣誉奖项</h2>`;
         validAwards.forEach(award => {
           html += `<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="font-size:${s.smallText}px;">${award.name}</span>${award.time ? `<span style="color:#6b7280;font-size:${s.smallText}px;">${award.time}</span>` : ''}</div>`;
         });
@@ -236,7 +234,7 @@ export default function Builder() {
       
       document.body.removeChild(container);
       
-      // 创建 PDF
+      // 创建 PDF - 根据实际内容高度判断是否需要分页
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
       const imgData = canvas.toDataURL('image/png');
       const pdfWidth = pdf.internal.pageSize.getWidth();
@@ -244,18 +242,26 @@ export default function Builder() {
       const imgWidth = pdfWidth;
       const imgHeight = (canvas.height * pdfWidth) / canvas.width;
       
+      // 只有当内容真正超过一页时才分页
       if (imgHeight <= pdfHeight) {
         pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
       } else {
-        let heightLeft = imgHeight;
-        let position = 0;
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pdfHeight;
-        while (heightLeft > 0) {
-          position = heightLeft - imgHeight;
-          pdf.addPage();
-          pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-          heightLeft -= pdfHeight;
+        // 多页处理
+        const pageCount = Math.ceil(imgHeight / pdfHeight);
+        for (let i = 0; i < pageCount; i++) {
+          if (i > 0) pdf.addPage();
+          const srcY = i * pdfHeight * (canvas.width / pdfWidth);
+          const srcH = Math.min(pdfHeight * (canvas.width / pdfWidth), canvas.height - srcY);
+          const destH = srcH * (pdfWidth / canvas.width);
+          
+          // 创建临时 canvas 裁剪当前页
+          const pageCanvas = document.createElement('canvas');
+          pageCanvas.width = canvas.width;
+          pageCanvas.height = srcH;
+          const ctx = pageCanvas.getContext('2d');
+          ctx?.drawImage(canvas, 0, srcY, canvas.width, srcH, 0, 0, canvas.width, srcH);
+          
+          pdf.addImage(pageCanvas.toDataURL('image/png'), 'PNG', 0, 0, imgWidth, destH);
         }
       }
       
@@ -411,6 +417,16 @@ export default function Builder() {
                       endMonth={edu.endMonth}
                       onStartChange={(y, m) => { updateEducation(edu.id, 'startYear', y); updateEducation(edu.id, 'startMonth', m); }}
                       onEndChange={(y, m) => { updateEducation(edu.id, 'endYear', y); updateEducation(edu.id, 'endMonth', m); }}
+                    />
+                  </div>
+                  <div className="mt-2">
+                    <label className="block text-xs text-gray-500 mb-1">校园经历（可选）</label>
+                    <textarea
+                      value={edu.description || ''}
+                      onChange={(e) => updateEducation(edu.id, 'description', e.target.value)}
+                      className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded focus:ring-1 focus:ring-blue-500"
+                      rows={2}
+                      placeholder="社团活动、学生会、竞赛经历等..."
                     />
                   </div>
                 </div>
@@ -769,14 +785,14 @@ function ResumePreview({ form, densityMode = 'normal', previewRef }: {
             {/* 教育经历 */}
             {form.education.some(e => e.school) && (
               <div className={styles.sectionGap}>
-                <h2 className={`${styles.sectionTitleSize} font-bold text-gray-900 border-b-2 border-gray-800 pb-1 ${styles.itemGap}`}>教育经历</h2>
+                <h2 className={`${styles.sectionTitleSize} font-bold text-gray-900 border-b-2 border-gray-800 pb-2 mb-2`}>教育经历</h2>
                 {form.education.filter(e => e.school).map((edu) => (
                   <div key={edu.id} className={styles.itemGap}>
-                    <div className="flex justify-between items-start">
-                      <div><span className="font-semibold">{edu.school}</span>{edu.major && <span className="text-gray-600 ml-2">{edu.major}</span>}</div>
+                    <div className="flex justify-between items-center">
+                      <span className="flex items-center"><span className="font-semibold">{edu.school}</span>{edu.major && <span className="text-gray-600 ml-3">{edu.major}</span>}{edu.degree && <span className="text-gray-500 ml-2">{edu.degree}</span>}</span>
                       <span className={`text-gray-500 ${styles.textSize}`}>{formatTime(edu.startYear, edu.startMonth, edu.endYear, edu.endMonth)}</span>
                     </div>
-                    {edu.degree && <div className={`text-gray-600 ${styles.textSize}`}>{edu.degree}</div>}
+                    {edu.description && <p className={`text-gray-700 ${styles.textSize} mt-1`}>{edu.description}</p>}
                   </div>
                 ))}
               </div>
@@ -785,7 +801,7 @@ function ResumePreview({ form, densityMode = 'normal', previewRef }: {
             {/* 专业技能 */}
             {(form.skillCategories?.some(c => c.name) || form.skills) && (
               <div className={styles.sectionGap}>
-                <h2 className={`${styles.sectionTitleSize} font-bold text-gray-900 border-b-2 border-gray-800 pb-1 ${styles.itemGap}`}>专业技能</h2>
+                <h2 className={`${styles.sectionTitleSize} font-bold text-gray-900 border-b-2 border-gray-800 pb-2 mb-2`}>专业技能</h2>
                 {form.skillCategories?.filter(c => c.name).map((cat) => (
                   <div key={cat.id} className={styles.itemGap}><span className="font-semibold">{cat.name}</span>{cat.description && <p className={`text-gray-700 mt-0.5 ${styles.textSize}`}>{cat.description}</p>}</div>
                 ))}
@@ -796,11 +812,13 @@ function ResumePreview({ form, densityMode = 'normal', previewRef }: {
             {/* 工作经历 */}
             {form.experience.some(e => e.company) && (
               <div className={styles.sectionGap}>
-                <h2 className={`${styles.sectionTitleSize} font-bold text-gray-900 border-b-2 border-gray-800 pb-1 ${styles.itemGap}`}>工作经历</h2>
+                <h2 className={`${styles.sectionTitleSize} font-bold text-gray-900 border-b-2 border-gray-800 pb-2 mb-2`}>工作经历</h2>
                 {form.experience.filter(e => e.company).map((exp) => (
                   <div key={exp.id} className={styles.itemGap}>
-                    <div className="flex justify-between items-start"><span className="font-semibold">{exp.company}</span><span className={`text-gray-500 ${styles.textSize}`}>{formatTime(exp.startYear, exp.startMonth, exp.endYear, exp.endMonth)}</span></div>
-                    <div className={`text-gray-600 ${styles.textSize}`}>{exp.position}{exp.location && ` · ${exp.location}`}</div>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="flex items-center"><span className="font-semibold">{exp.company}</span>{exp.position && <span className="text-gray-600 ml-2">{exp.position}</span>}{exp.location && <span className="text-gray-500 ml-2">{exp.location}</span>}</span>
+                      <span className={`text-gray-500 ${styles.textSize}`}>{formatTime(exp.startYear, exp.startMonth, exp.endYear, exp.endMonth)}</span>
+                    </div>
                     {exp.bullets.filter(b => b && b.trim()).length > 0 && <p className={`text-gray-700 ${styles.textSize}`}>{exp.bullets.filter(b => b && b.trim()).join(' ')}</p>}
                   </div>
                 ))}
@@ -810,16 +828,15 @@ function ResumePreview({ form, densityMode = 'normal', previewRef }: {
             {/* 项目经历 */}
             {form.projects.some(p => p.name) && (
               <div className={styles.sectionGap}>
-                <h2 className={`${styles.sectionTitleSize} font-bold text-gray-900 border-b-2 border-gray-800 pb-1 ${styles.itemGap}`}>项目经历</h2>
+                <h2 className={`${styles.sectionTitleSize} font-bold text-gray-900 border-b-2 border-gray-800 pb-2 mb-2`}>项目经历</h2>
                 {form.projects.filter(p => p.name).map((proj) => (
                   <div key={proj.id} className={styles.itemGap}>
-                    <div className="flex justify-between items-start">
-                      <div><span className="font-semibold">{proj.name}</span>{proj.link && <a href={proj.link} target="_blank" rel="noopener noreferrer" className={`text-blue-600 ${styles.textSize} ml-2 hover:underline`}>{proj.link}</a>}</div>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="flex items-center"><span className="font-semibold">{proj.name}</span>{proj.role && <span className="text-gray-600 ml-2">{proj.role}</span>}{proj.link && <a href={proj.link} target="_blank" rel="noopener noreferrer" className={`text-blue-600 ${styles.textSize} ml-2 hover:underline`}>{proj.link}</a>}</span>
                       <span className={`text-gray-500 ${styles.textSize}`}>{formatTime(proj.startYear, proj.startMonth, proj.endYear, proj.endMonth)}</span>
                     </div>
-                    {proj.role && <div className={`text-gray-600 ${styles.textSize}`}>{proj.role}</div>}
                     {proj.bullets.filter(b => b && b.trim()).length > 0 && (
-                      <ul className="mt-0.5 space-y-0">{proj.bullets.filter(b => b && b.trim()).map((bullet, i) => (<li key={i} className={`text-gray-700 ${styles.textSize} flex`}><span className="mr-1">•</span><span>{bullet}</span></li>))}</ul>
+                      <ul className="space-y-0">{proj.bullets.filter(b => b && b.trim()).map((bullet, i) => (<li key={i} className={`text-gray-700 ${styles.textSize} flex`}><span className="mr-1">•</span><span>{bullet}</span></li>))}</ul>
                     )}
                   </div>
                 ))}
@@ -829,7 +846,7 @@ function ResumePreview({ form, densityMode = 'normal', previewRef }: {
             {/* 荣誉奖项 */}
             {form.awards?.some(a => a.name) && (
               <div className={styles.sectionGap}>
-                <h2 className={`${styles.sectionTitleSize} font-bold text-gray-900 border-b-2 border-gray-800 pb-1 ${styles.itemGap}`}>荣誉奖项</h2>
+                <h2 className={`${styles.sectionTitleSize} font-bold text-gray-900 border-b-2 border-gray-800 pb-2 mb-2`}>荣誉奖项</h2>
                 {form.awards.filter(a => a.name).map((award) => (<div key={award.id} className={`flex justify-between ${styles.itemGap}`}><span className={styles.textSize}>{award.name}</span>{award.time && <span className={`text-gray-500 ${styles.textSize}`}>{award.time}</span>}</div>))}
               </div>
             )}

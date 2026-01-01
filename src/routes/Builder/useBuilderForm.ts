@@ -30,6 +30,7 @@ export interface EducationEntry {
   startMonth?: string;
   endYear?: string;
   endMonth?: string;
+  description?: string;  // 校园经历描述
 }
 
 export interface ExperienceEntry {
@@ -82,7 +83,7 @@ export interface BuilderFormState {
 const createInitialState = (): BuilderFormState => ({
   basicInfo: { name: '', phone: '', email: '', city: '', jobTitle: '', status: '', github: '', website: '', birthYear: '', birthMonth: '', hometown: '' },
   photo: '',
-  education: [{ id: generateId(), school: '', major: '', degree: '', startYear: '', startMonth: '', endYear: '', endMonth: '' }],
+  education: [{ id: generateId(), school: '', major: '', degree: '', startYear: '', startMonth: '', endYear: '', endMonth: '', description: '' }],
   experience: [],  // 工作经历可选，初始为空
   projects: [],
   skills: '',
@@ -104,7 +105,7 @@ export function useBuilderForm() {
   const addEducation = useCallback(() => {
     setForm((prev) => ({
       ...prev,
-      education: [...prev.education, { id: generateId(), school: '', major: '', degree: '', startYear: '', startMonth: '', endYear: '', endMonth: '' }],
+      education: [...prev.education, { id: generateId(), school: '', major: '', degree: '', startYear: '', startMonth: '', endYear: '', endMonth: '', description: '' }],
     }));
   }, []);
 
