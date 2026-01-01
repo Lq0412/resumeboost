@@ -99,13 +99,11 @@ export function formToMarkdown(form: BuilderFormState): string {
     validProjects.forEach(proj => {
       const time = formatTime(proj.startYear, proj.startMonth, proj.endYear, proj.endMonth);
       let header = `**${proj.name}**`;
+      if (proj.link) header += ` [链接](${proj.link})`;
       if (time) header += ` | ${time}`;
       lines.push(header);
       
-      const subLine: string[] = [];
-      if (proj.role) subLine.push(proj.role);
-      if (proj.location) subLine.push(proj.location);
-      if (subLine.length > 0) lines.push(subLine.join(' · '));
+      if (proj.role) lines.push(proj.role);
       
       const validBullets = proj.bullets.filter(b => b.trim());
       if (validBullets.length > 0) {

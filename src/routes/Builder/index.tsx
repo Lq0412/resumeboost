@@ -239,7 +239,9 @@ export default function Builder() {
                   <div className="grid grid-cols-2 gap-2 mb-2">
                     <Input value={proj.name} onChange={(v) => updateProject(proj.id, 'name', v)} placeholder="项目名称" small />
                     <Input value={proj.role || ''} onChange={(v) => updateProject(proj.id, 'role', v)} placeholder="角色/职位" small />
-                    <Input value={proj.location || ''} onChange={(v) => updateProject(proj.id, 'location', v)} placeholder="地点" small />
+                    <div className="col-span-2">
+                      <Input value={proj.link || ''} onChange={(v) => updateProject(proj.id, 'link', v)} placeholder="项目链接（GitHub/演示地址）" small />
+                    </div>
                   </div>
                   <div className="mb-2">
                     <label className="block text-xs text-gray-500 mb-1">项目时间</label>
@@ -405,10 +407,17 @@ function ResumePreview({ form }: { form: ReturnType<typeof useBuilderForm>['form
           {form.projects.filter(p => p.name).map((proj) => (
             <div key={proj.id} className="mb-3">
               <div className="flex justify-between items-start">
-                <span className="font-semibold">{proj.name}</span>
+                <div>
+                  <span className="font-semibold">{proj.name}</span>
+                  {proj.link && (
+                    <a href={proj.link} target="_blank" rel="noopener noreferrer" className="text-blue-600 text-xs ml-2 hover:underline">
+                      🔗 链接
+                    </a>
+                  )}
+                </div>
                 <span className="text-gray-500 text-xs whitespace-nowrap">{formatTime(proj.startYear, proj.startMonth, proj.endYear, proj.endMonth)}</span>
               </div>
-              {(proj.role || proj.location) && <div className="text-gray-600 text-xs mb-1">{proj.role}{proj.location && ` · ${proj.location}`}</div>}
+              {proj.role && <div className="text-gray-600 text-xs mb-1">{proj.role}</div>}
               {proj.bullets.filter(b => b.trim()).length > 0 && <p className="text-gray-700">{proj.bullets.filter(b => b.trim()).join(' ')}</p>}
             </div>
           ))}

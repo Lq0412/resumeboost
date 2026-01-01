@@ -42,7 +42,7 @@ export interface ProjectEntry {
   id: string;
   name: string;
   role?: string;
-  location?: string;
+  link?: string;  // GitHub/部署链接
   startYear?: string;
   startMonth?: string;
   endYear?: string;
@@ -150,7 +150,7 @@ export function useBuilderForm() {
   const addProject = useCallback(() => {
     setForm((prev) => ({
       ...prev,
-      projects: [...prev.projects, { id: generateId(), name: '', role: '', location: '', startYear: '', startMonth: '', endYear: '', endMonth: '', bullets: [''] }],
+      projects: [...prev.projects, { id: generateId(), name: '', role: '', link: '', startYear: '', startMonth: '', endYear: '', endMonth: '', bullets: [''] }],
     }));
   }, []);
 
