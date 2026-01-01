@@ -5,9 +5,12 @@ import { saveSession, mask } from '../../lib';
 import { showToast } from '../../components';
 import { useRef, useState, useEffect } from 'react';
 
+type DensityMode = 'normal' | 'compact' | 'tight';
+
 export default function Builder() {
   const navigate = useNavigate();
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const [densityMode, setDensityMode] = useState<DensityMode>('normal');
   const {
     form,
     updateBasicInfo,
@@ -331,10 +334,21 @@ export default function Builder() {
             <div className="bg-gray-700 rounded-lg shadow-lg h-full overflow-hidden flex flex-col">
               <div className="px-4 py-2 bg-gray-800 border-b border-gray-600 flex items-center justify-between flex-shrink-0">
                 <span className="text-sm font-medium text-gray-200">📄 简历预览</span>
-                <span className="text-xs text-gray-400">A4 纸张 · 实时更新</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-400">密度:</span>
+                  <select 
+                    value={densityMode} 
+                    onChange={(e) => setDensityMode(e.target.value as DensityMode)}
+                    className="text-xs bg-gray-700 text-gray-200 border border-gray-600 rounded px-2 py-1"
+                  >
+                    <option value="normal">标准</option>
+                    <option value="compact">紧凑</option>
+                    <option value="tight">极简</option>
+                  </select>
+                </div>
               </div>
               <div className="flex-1 overflow-auto p-4 flex justify-center">
-                <ResumePreview form={form} />
+                <ResumePreview form={form} densityMode={densityMode} />
               </div>
             </div>
           </div>
@@ -347,21 +361,53 @@ export default function Builder() {
 // A4 纸张尺寸常量 (mm -> px, 96dpi)
 const A4_WIDTH = 210 * 3.78; // ~794px
 const A4_HEIGHT = 297 * 3.78; // ~1123px
-const A4_PADDING = 40; // 页边距
+
+// 密度模式样式配置
+const densityStyles = {
+  normal: {
+    padding: 40,
+    titleSize: 'text-2xl',
+    sectionTitleSize: 'text-base',
+    textSize: 'text-sm',
+    sectionGap: 'mb-5',
+    itemGap: 'mb-3',
+    lineHeight: 'leading-normal',
+  },
+  compact: {
+    padding: 32,
+    titleSize: 'text-xl',
+    sectionTitleSize: 'text-sm',
+    textSize: 'text-xs',
+    sectionGap: 'mb-3',
+    itemGap: 'mb-2',
+    lineHeight: 'leading-snug',
+  },
+  tight: {
+    padding: 24,
+    titleSize: 'text-lg',
+    sectionTitleSize: 'text-xs',
+    textSize: 'text-xs',
+    sectionGap: 'mb-2',
+    itemGap: 'mb-1',
+    lineHeight: 'leading-tight',
+  },
+};
 
 // 简历预览组件 - A4纸张模拟
-function ResumePreview({ form }: { form: ReturnType<typeof useBuilderForm>['form'] }) {
+function ResumePreview({ form, densityMode = 'normal' }: { form: ReturnType<typeof useBuilderForm>['form']; densityMode?: DensityMode }) {
   const contentRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0.6);
   const [contentHeight, setContentHeight] = useState(0);
+  
+  const styles = densityStyles[densityMode];
 
   // 计算内容高度和页数
   useEffect(() => {
     if (contentRef.current) {
       setContentHeight(contentRef.current.scrollHeight);
     }
-  }, [form]);
+  }, [form, densityMode]);
 
   // 根据容器宽度自动调整缩放
   useEffect(() => {
@@ -377,9 +423,9 @@ function ResumePreview({ form }: { form: ReturnType<typeof useBuilderForm>['form
     return () => window.removeEventListener('resize', updateScale);
   }, []);
 
-  const usedPercent = Math.min(100, Math.round((contentHeight / (A4_HEIGHT - A4_PADDING * 2)) * 100));
-  const isOverflow = contentHeight > (A4_HEIGHT - A4_PADDING * 2);
-  const pages = Math.ceil(contentHeight / (A4_HEIGHT - A4_PADDING * 2));
+  const usedPercent = Math.min(100, Math.round((contentHeight / (A4_HEIGHT - styles.padding * 2)) * 100));
+  const isOverflow = contentHeight > (A4_HEIGHT - styles.padding * 2);
+  const pages = Math.ceil(contentHeight / (A4_HEIGHT - styles.padding * 2));
 
   const hasContent = form.basicInfo.name || form.basicInfo.phone || form.education.some(e => e.school);
 
@@ -444,22 +490,23 @@ function ResumePreview({ form }: { form: ReturnType<typeof useBuilderForm>['form
       >
         {/* 内容区域 */}
         <div 
+          className={styles.lineHeight}
           style={{ 
             transform: `scale(${scale})`,
             transformOrigin: 'top left',
             width: A4_WIDTH,
             minHeight: A4_HEIGHT,
-            padding: A4_PADDING,
+            padding: styles.padding,
             fontFamily: "'Microsoft YaHei', 'PingFang SC', sans-serif",
           }}
         >
           <div ref={contentRef}>
             {/* 头部 */}
-            <div className="mb-5 flex">
+            <div className={`${styles.sectionGap} flex`}>
               <div className="flex-1 pr-4">
-                {form.basicInfo.name && <h1 className="text-2xl font-bold text-gray-900 mb-1">{form.basicInfo.name}</h1>}
-                {form.basicInfo.jobTitle && <p className="text-base text-gray-700 mb-2">求职意向：{form.basicInfo.jobTitle}</p>}
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-gray-600 text-sm">
+                {form.basicInfo.name && <h1 className={`${styles.titleSize} font-bold text-gray-900 mb-1`}>{form.basicInfo.name}</h1>}
+                {form.basicInfo.jobTitle && <p className={`${styles.textSize} text-gray-700 mb-1`}>求职意向：{form.basicInfo.jobTitle}</p>}
+                <div className={`grid grid-cols-2 gap-x-3 gap-y-0.5 text-gray-600 ${styles.textSize}`}>
                   {form.basicInfo.phone && <span>📱 {form.basicInfo.phone}</span>}
                   {form.basicInfo.email && <span>✉️ {form.basicInfo.email}</span>}
                   {form.basicInfo.city && <span>📍 {form.basicInfo.city}</span>}
@@ -480,20 +527,20 @@ function ResumePreview({ form }: { form: ReturnType<typeof useBuilderForm>['form
                   )}
                 </div>
               </div>
-              {form.photo && <img src={form.photo} alt="照片" className="w-20 h-28 object-cover rounded flex-shrink-0" />}
+              {form.photo && <img src={form.photo} alt="照片" className={`${densityMode === 'tight' ? 'w-16 h-22' : 'w-20 h-28'} object-cover rounded flex-shrink-0`} />}
             </div>
 
             {/* 教育经历 */}
             {form.education.some(e => e.school) && (
-              <div className="mb-5">
-                <h2 className="text-base font-bold text-gray-900 border-b-2 border-gray-800 pb-1 mb-3">教育经历</h2>
+              <div className={styles.sectionGap}>
+                <h2 className={`${styles.sectionTitleSize} font-bold text-gray-900 border-b-2 border-gray-800 pb-1 ${styles.itemGap}`}>教育经历</h2>
                 {form.education.filter(e => e.school).map((edu) => (
-                  <div key={edu.id} className="mb-2">
+                  <div key={edu.id} className={styles.itemGap}>
                     <div className="flex justify-between items-start">
                       <div><span className="font-semibold">{edu.school}</span>{edu.major && <span className="text-gray-600 ml-2">{edu.major}</span>}</div>
-                      <span className="text-gray-500 text-sm">{formatTime(edu.startYear, edu.startMonth, edu.endYear, edu.endMonth)}</span>
+                      <span className={`text-gray-500 ${styles.textSize}`}>{formatTime(edu.startYear, edu.startMonth, edu.endYear, edu.endMonth)}</span>
                     </div>
-                    {edu.degree && <div className="text-gray-600 text-sm">{edu.degree}</div>}
+                    {edu.degree && <div className={`text-gray-600 ${styles.textSize}`}>{edu.degree}</div>}
                   </div>
                 ))}
               </div>
@@ -501,24 +548,24 @@ function ResumePreview({ form }: { form: ReturnType<typeof useBuilderForm>['form
 
             {/* 专业技能 */}
             {(form.skillCategories?.some(c => c.name) || form.skills) && (
-              <div className="mb-5">
-                <h2 className="text-base font-bold text-gray-900 border-b-2 border-gray-800 pb-1 mb-3">专业技能</h2>
+              <div className={styles.sectionGap}>
+                <h2 className={`${styles.sectionTitleSize} font-bold text-gray-900 border-b-2 border-gray-800 pb-1 ${styles.itemGap}`}>专业技能</h2>
                 {form.skillCategories?.filter(c => c.name).map((cat) => (
-                  <div key={cat.id} className="mb-2"><span className="font-semibold">{cat.name}</span>{cat.description && <p className="text-gray-700 mt-0.5">{cat.description}</p>}</div>
+                  <div key={cat.id} className={styles.itemGap}><span className="font-semibold">{cat.name}</span>{cat.description && <p className={`text-gray-700 mt-0.5 ${styles.textSize}`}>{cat.description}</p>}</div>
                 ))}
-                {!form.skillCategories?.length && form.skills && <p className="text-gray-700">{form.skills}</p>}
+                {!form.skillCategories?.length && form.skills && <p className={`text-gray-700 ${styles.textSize}`}>{form.skills}</p>}
               </div>
             )}
 
             {/* 工作经历 */}
             {form.experience.some(e => e.company) && (
-              <div className="mb-5">
-                <h2 className="text-base font-bold text-gray-900 border-b-2 border-gray-800 pb-1 mb-3">工作经历</h2>
+              <div className={styles.sectionGap}>
+                <h2 className={`${styles.sectionTitleSize} font-bold text-gray-900 border-b-2 border-gray-800 pb-1 ${styles.itemGap}`}>工作经历</h2>
                 {form.experience.filter(e => e.company).map((exp) => (
-                  <div key={exp.id} className="mb-3">
-                    <div className="flex justify-between items-start"><span className="font-semibold">{exp.company}</span><span className="text-gray-500 text-sm">{formatTime(exp.startYear, exp.startMonth, exp.endYear, exp.endMonth)}</span></div>
-                    <div className="text-gray-600 text-sm mb-1">{exp.position}{exp.location && ` · ${exp.location}`}</div>
-                    {exp.bullets.filter(b => b.trim()).length > 0 && <p className="text-gray-700 text-sm">{exp.bullets.filter(b => b.trim()).join(' ')}</p>}
+                  <div key={exp.id} className={styles.itemGap}>
+                    <div className="flex justify-between items-start"><span className="font-semibold">{exp.company}</span><span className={`text-gray-500 ${styles.textSize}`}>{formatTime(exp.startYear, exp.startMonth, exp.endYear, exp.endMonth)}</span></div>
+                    <div className={`text-gray-600 ${styles.textSize}`}>{exp.position}{exp.location && ` · ${exp.location}`}</div>
+                    {exp.bullets.filter(b => b.trim()).length > 0 && <p className={`text-gray-700 ${styles.textSize}`}>{exp.bullets.filter(b => b.trim()).join(' ')}</p>}
                   </div>
                 ))}
               </div>
@@ -526,17 +573,17 @@ function ResumePreview({ form }: { form: ReturnType<typeof useBuilderForm>['form
 
             {/* 项目经历 */}
             {form.projects.some(p => p.name) && (
-              <div className="mb-5">
-                <h2 className="text-base font-bold text-gray-900 border-b-2 border-gray-800 pb-1 mb-3">项目经历</h2>
+              <div className={styles.sectionGap}>
+                <h2 className={`${styles.sectionTitleSize} font-bold text-gray-900 border-b-2 border-gray-800 pb-1 ${styles.itemGap}`}>项目经历</h2>
                 {form.projects.filter(p => p.name).map((proj) => (
-                  <div key={proj.id} className="mb-3">
+                  <div key={proj.id} className={styles.itemGap}>
                     <div className="flex justify-between items-start">
-                      <div><span className="font-semibold">{proj.name}</span>{proj.link && <a href={proj.link} target="_blank" rel="noopener noreferrer" className="text-blue-600 text-sm ml-2 hover:underline">{proj.link}</a>}</div>
-                      <span className="text-gray-500 text-sm">{formatTime(proj.startYear, proj.startMonth, proj.endYear, proj.endMonth)}</span>
+                      <div><span className="font-semibold">{proj.name}</span>{proj.link && <a href={proj.link} target="_blank" rel="noopener noreferrer" className={`text-blue-600 ${styles.textSize} ml-2 hover:underline`}>{proj.link}</a>}</div>
+                      <span className={`text-gray-500 ${styles.textSize}`}>{formatTime(proj.startYear, proj.startMonth, proj.endYear, proj.endMonth)}</span>
                     </div>
-                    {proj.role && <div className="text-gray-600 text-sm mb-1">{proj.role}</div>}
+                    {proj.role && <div className={`text-gray-600 ${styles.textSize}`}>{proj.role}</div>}
                     {proj.bullets.filter(b => b.trim()).length > 0 && (
-                      <ul className="mt-1 space-y-0.5">{proj.bullets.filter(b => b.trim()).map((bullet, i) => (<li key={i} className="text-gray-700 text-sm flex"><span className="mr-2">•</span><span>{bullet}</span></li>))}</ul>
+                      <ul className="mt-0.5 space-y-0">{proj.bullets.filter(b => b.trim()).map((bullet, i) => (<li key={i} className={`text-gray-700 ${styles.textSize} flex`}><span className="mr-1">•</span><span>{bullet}</span></li>))}</ul>
                     )}
                   </div>
                 ))}
@@ -545,9 +592,9 @@ function ResumePreview({ form }: { form: ReturnType<typeof useBuilderForm>['form
 
             {/* 荣誉奖项 */}
             {form.awards?.some(a => a.name) && (
-              <div className="mb-5">
-                <h2 className="text-base font-bold text-gray-900 border-b-2 border-gray-800 pb-1 mb-3">荣誉奖项</h2>
-                {form.awards.filter(a => a.name).map((award) => (<div key={award.id} className="flex justify-between mb-1"><span>{award.name}</span>{award.time && <span className="text-gray-500 text-sm">{award.time}</span>}</div>))}
+              <div className={styles.sectionGap}>
+                <h2 className={`${styles.sectionTitleSize} font-bold text-gray-900 border-b-2 border-gray-800 pb-1 ${styles.itemGap}`}>荣誉奖项</h2>
+                {form.awards.filter(a => a.name).map((award) => (<div key={award.id} className={`flex justify-between ${styles.itemGap}`}><span className={styles.textSize}>{award.name}</span>{award.time && <span className={`text-gray-500 ${styles.textSize}`}>{award.time}</span>}</div>))}
               </div>
             )}
           </div>
@@ -557,7 +604,7 @@ function ResumePreview({ form }: { form: ReturnType<typeof useBuilderForm>['form
         {isOverflow && (
           <div 
             className="absolute left-0 right-0 border-t-2 border-dashed border-red-400 pointer-events-none"
-            style={{ top: (A4_HEIGHT - A4_PADDING) * scale }}
+            style={{ top: (A4_HEIGHT - styles.padding) * scale }}
           >
             <span className="absolute right-2 -top-5 text-xs text-red-500 bg-white px-1">第1页结束</span>
           </div>
