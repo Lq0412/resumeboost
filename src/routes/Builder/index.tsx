@@ -181,14 +181,12 @@ export default function Builder() {
             </Section>
 
             {/* 工作经历 */}
-            <Section title="工作经历" onAdd={addExperience} addText="+ 添加">
+            <Section title="工作经历" onAdd={addExperience} addText="+ 添加" optional>
               {form.experience.map((exp, idx) => (
                 <div key={exp.id} className="border border-gray-200 rounded-lg p-3 mb-3 bg-gray-50">
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-xs text-gray-500">工作 {idx + 1}</span>
-                    {form.experience.length > 1 && (
-                      <button onClick={() => removeExperience(exp.id)} className="text-xs text-red-500 hover:text-red-700">删除</button>
-                    )}
+                    <button onClick={() => removeExperience(exp.id)} className="text-xs text-red-500 hover:text-red-700">删除</button>
                   </div>
                   <div className="grid grid-cols-2 gap-2 mb-2">
                     <Input value={exp.company} onChange={(v) => updateExperience(exp.id, 'company', v)} placeholder="公司名称" small />

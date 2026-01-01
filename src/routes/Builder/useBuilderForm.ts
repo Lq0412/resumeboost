@@ -77,7 +77,7 @@ const createInitialState = (): BuilderFormState => ({
   basicInfo: { name: '', phone: '', email: '', city: '', jobTitle: '', status: '' },
   photo: '',
   education: [{ id: generateId(), school: '', major: '', degree: '', startYear: '', startMonth: '', endYear: '', endMonth: '' }],
-  experience: [{ id: generateId(), company: '', position: '', location: '', startYear: '', startMonth: '', endYear: '', endMonth: '', bullets: [''] }],
+  experience: [],  // 工作经历可选，初始为空
   projects: [],
   skills: '',
   skillCategories: [{ id: generateId(), name: '', description: '' }],
