@@ -189,37 +189,37 @@
 - [ ] 10. Checkpoint - 前端功能完成
   - 确保所有测试通过，如有问题请询问用户
 
-- [ ] 11. 边缘函数实现
-  - [ ] 11.1 创建边缘函数项目结构
+- [x] 11. 边缘函数实现
+  - [x] 11.1 创建边缘函数项目结构
     - 创建 functions/ 目录
     - 配置 ESA Pages 边缘函数入口
     - _Requirements: 10.5_
 
-  - [ ] 11.2 实现 /api/analyze 边缘函数
+  - [x] 11.2 实现 /api/analyze 边缘函数
     - 请求验证和二次脱敏
     - 调用 AI 模型
     - 响应格式化
     - _Requirements: 5.1, 4.8_
 
-  - [ ] 11.3 实现 /api/match 边缘函数
+  - [x] 11.3 实现 /api/match 边缘函数
     - 请求验证
     - 调用 AI 模型
     - 响应格式化
     - _Requirements: 6.1_
 
-  - [ ] 11.4 实现 /api/rewrite 边缘函数
+  - [x] 11.4 实现 /api/rewrite 边缘函数
     - 请求验证
     - 调用 AI 模型（conservative/strong）
     - 响应格式化
     - _Requirements: 7.1, 7.3, 7.4_
 
-  - [ ] 11.5 实现 /api/finalize 边缘函数
+  - [x] 11.5 实现 /api/finalize 边缘函数
     - 请求验证
     - 调用 AI 模型
     - 生成 Markdown 和 HTML
     - _Requirements: 8.1, 8.3, 8.4_
 
-  - [ ] 11.6 实现限流中间件
+  - [x] 11.6 实现限流中间件
     - 基于 IP + route 的限流
     - 返回 429 + Retry-After
     - _Requirements: 10.5_
