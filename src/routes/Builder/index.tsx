@@ -93,58 +93,156 @@ export default function Builder() {
     }
   };
 
-  // 导出 PDF
+  // 导出 PDF - 创建独立渲染容器避免 oklch 颜色问题
   const handleExportPDF = async () => {
-    const markdown = formToMarkdown(form);
-    if (markdown.trim().length < 50) {
+    const hasContent = form.basicInfo.name || form.basicInfo.phone || form.education.some(e => e.school);
+    if (!hasContent) {
       showToast('请至少填写一些基本信息', 'error');
-      return;
-    }
-    
-    if (!previewRef.current) {
-      showToast('预览区域未就绪', 'error');
       return;
     }
 
     showToast('正在生成 PDF...', 'info');
     
     try {
-      // 获取预览内容元素
-      const previewContent = previewRef.current;
+      // 创建独立的渲染容器，使用纯内联样式
+      const container = document.createElement('div');
+      container.style.cssText = 'position:fixed;left:-9999px;top:0;';
+      document.body.appendChild(container);
       
+      const formatTime = (sy?: string, sm?: string, ey?: string, em?: string) => {
+        if (!sy) return '';
+        const start = sm ? `${sy}-${sm}` : sy;
+        if (!ey) return start;
+        if (ey === 'present') return `${start} ~ 至今`;
+        return `${start} ~ ${ey}${em ? `-${em}` : ''}`;
+      };
+
+      // 构建纯 HTML 内容，所有样式内联
+      let html = `<div style="width:794px;min-height:1123px;padding:40px;background:#fff;font-family:'Microsoft YaHei','PingFang SC',sans-serif;color:#374151;font-size:14px;line-height:1.5;">`;
+      
+      // 头部
+      html += `<div style="display:flex;margin-bottom:20px;">`;
+      html += `<div style="flex:1;padding-right:16px;">`;
+      if (form.basicInfo.name) html += `<h1 style="font-size:24px;font-weight:bold;color:#111827;margin:0 0 4px 0;">${form.basicInfo.name}</h1>`;
+      if (form.basicInfo.jobTitle) html += `<p style="color:#374151;margin:0 0 4px 0;">求职意向：${form.basicInfo.jobTitle}</p>`;
+      
+      const contacts: string[] = [];
+      if (form.basicInfo.phone) contacts.push(`📱 ${form.basicInfo.phone}`);
+      if (form.basicInfo.email) contacts.push(`✉️ ${form.basicInfo.email}`);
+      if (form.basicInfo.city) contacts.push(`📍 ${form.basicInfo.city}`);
+      if (form.basicInfo.status) contacts.push(`🔵 ${form.basicInfo.status}`);
+      if (form.basicInfo.birthYear) contacts.push(`🎂 ${form.basicInfo.birthYear}${form.basicInfo.birthMonth ? `-${form.basicInfo.birthMonth}` : ''}`);
+      if (form.basicInfo.hometown) contacts.push(`🏠 ${form.basicInfo.hometown}`);
+      if (form.basicInfo.github) contacts.push(`🔗 ${form.basicInfo.github}`);
+      if (form.basicInfo.website) contacts.push(`🌐 ${form.basicInfo.website}`);
+      
+      if (contacts.length > 0) {
+        html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;color:#4b5563;font-size:13px;">`;
+        contacts.forEach(c => { html += `<span>${c}</span>`; });
+        html += `</div>`;
+      }
+      html += `</div>`;
+      if (form.photo) html += `<img src="${form.photo}" style="width:80px;height:112px;object-fit:cover;border-radius:4px;flex-shrink:0;" />`;
+      html += `</div>`;
+
+      // 教育经历
+      const validEdu = form.education.filter(e => e.school);
+      if (validEdu.length > 0) {
+        html += `<div style="margin-bottom:16px;"><h2 style="font-size:15px;font-weight:bold;color:#111827;border-bottom:2px solid #1f2937;padding-bottom:4px;margin:0 0 10px 0;">教育经历</h2>`;
+        validEdu.forEach(edu => {
+          html += `<div style="margin-bottom:8px;"><div style="display:flex;justify-content:space-between;"><span style="font-weight:600;">${edu.school}${edu.major ? ` <span style="color:#4b5563;font-weight:normal;">${edu.major}</span>` : ''}</span><span style="color:#6b7280;font-size:13px;">${formatTime(edu.startYear, edu.startMonth, edu.endYear, edu.endMonth)}</span></div>`;
+          if (edu.degree) html += `<div style="color:#4b5563;font-size:13px;">${edu.degree}</div>`;
+          html += `</div>`;
+        });
+        html += `</div>`;
+      }
+
+      // 专业技能
+      const validSkills = form.skillCategories?.filter(c => c.name) || [];
+      if (validSkills.length > 0 || form.skills) {
+        html += `<div style="margin-bottom:16px;"><h2 style="font-size:15px;font-weight:bold;color:#111827;border-bottom:2px solid #1f2937;padding-bottom:4px;margin:0 0 10px 0;">专业技能</h2>`;
+        if (validSkills.length > 0) {
+          validSkills.forEach(cat => {
+            html += `<div style="margin-bottom:6px;"><span style="font-weight:600;">${cat.name}</span>`;
+            if (cat.description) html += `<p style="color:#374151;margin:2px 0 0 0;font-size:13px;">${cat.description}</p>`;
+            html += `</div>`;
+          });
+        } else if (form.skills) {
+          html += `<p style="color:#374151;margin:0;">${form.skills}</p>`;
+        }
+        html += `</div>`;
+      }
+
+      // 工作经历
+      const validExp = form.experience.filter(e => e.company);
+      if (validExp.length > 0) {
+        html += `<div style="margin-bottom:16px;"><h2 style="font-size:15px;font-weight:bold;color:#111827;border-bottom:2px solid #1f2937;padding-bottom:4px;margin:0 0 10px 0;">工作经历</h2>`;
+        validExp.forEach(exp => {
+          html += `<div style="margin-bottom:10px;"><div style="display:flex;justify-content:space-between;"><span style="font-weight:600;">${exp.company}</span><span style="color:#6b7280;font-size:13px;">${formatTime(exp.startYear, exp.startMonth, exp.endYear, exp.endMonth)}</span></div>`;
+          html += `<div style="color:#4b5563;font-size:13px;">${exp.position}${exp.location ? ` · ${exp.location}` : ''}</div>`;
+          const bullets = exp.bullets.filter(b => b && b.trim());
+          if (bullets.length > 0) html += `<p style="color:#374151;margin:4px 0 0 0;font-size:13px;">${bullets.join(' ')}</p>`;
+          html += `</div>`;
+        });
+        html += `</div>`;
+      }
+
+      // 项目经历
+      const validProj = form.projects.filter(p => p.name);
+      if (validProj.length > 0) {
+        html += `<div style="margin-bottom:16px;"><h2 style="font-size:15px;font-weight:bold;color:#111827;border-bottom:2px solid #1f2937;padding-bottom:4px;margin:0 0 10px 0;">项目经历</h2>`;
+        validProj.forEach(proj => {
+          html += `<div style="margin-bottom:10px;"><div style="display:flex;justify-content:space-between;"><span><span style="font-weight:600;">${proj.name}</span>${proj.link ? ` <a href="${proj.link}" style="color:#2563eb;font-size:12px;margin-left:8px;">${proj.link}</a>` : ''}</span><span style="color:#6b7280;font-size:13px;">${formatTime(proj.startYear, proj.startMonth, proj.endYear, proj.endMonth)}</span></div>`;
+          if (proj.role) html += `<div style="color:#4b5563;font-size:13px;">${proj.role}</div>`;
+          const bullets = proj.bullets.filter(b => b && b.trim());
+          if (bullets.length > 0) {
+            html += `<ul style="margin:4px 0 0 0;padding-left:16px;">`;
+            bullets.forEach(b => { html += `<li style="color:#374151;font-size:13px;margin-bottom:2px;">${b}</li>`; });
+            html += `</ul>`;
+          }
+          html += `</div>`;
+        });
+        html += `</div>`;
+      }
+
+      // 荣誉奖项
+      const validAwards = form.awards?.filter(a => a.name) || [];
+      if (validAwards.length > 0) {
+        html += `<div style="margin-bottom:16px;"><h2 style="font-size:15px;font-weight:bold;color:#111827;border-bottom:2px solid #1f2937;padding-bottom:4px;margin:0 0 10px 0;">荣誉奖项</h2>`;
+        validAwards.forEach(award => {
+          html += `<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="font-size:13px;">${award.name}</span>${award.time ? `<span style="color:#6b7280;font-size:13px;">${award.time}</span>` : ''}</div>`;
+        });
+        html += `</div>`;
+      }
+
+      html += `</div>`;
+      container.innerHTML = html;
+
       // 使用 html2canvas 截图
-      const canvas = await html2canvas(previewContent, {
-        scale: 2, // 提高清晰度
+      const canvas = await html2canvas(container.firstChild as HTMLElement, {
+        scale: 2,
         useCORS: true,
         allowTaint: true,
         backgroundColor: '#ffffff',
       });
       
-      // 创建 PDF (A4 尺寸)
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4',
-      });
+      document.body.removeChild(container);
       
+      // 创建 PDF
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
       const imgData = canvas.toDataURL('image/png');
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
-      
-      // 计算图片在 PDF 中的尺寸
       const imgWidth = pdfWidth;
       const imgHeight = (canvas.height * pdfWidth) / canvas.width;
       
-      // 如果内容超过一页，需要分页
       if (imgHeight <= pdfHeight) {
         pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
       } else {
         let heightLeft = imgHeight;
         let position = 0;
-        
         pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
         heightLeft -= pdfHeight;
-        
         while (heightLeft > 0) {
           position = heightLeft - imgHeight;
           pdf.addPage();
@@ -153,9 +251,7 @@ export default function Builder() {
         }
       }
       
-      // 下载 PDF
-      const fileName = `${form.basicInfo.name || '简历'}_ResumeBoost.pdf`;
-      pdf.save(fileName);
+      pdf.save(`${form.basicInfo.name || '简历'}_ResumeBoost.pdf`);
       showToast('PDF 已下载', 'success');
     } catch (error) {
       console.error('PDF 生成失败:', error);

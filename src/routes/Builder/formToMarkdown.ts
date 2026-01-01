@@ -90,7 +90,7 @@ export function formToMarkdown(form: BuilderFormState): string {
       if (exp.location) subLine.push(exp.location);
       if (subLine.length > 0) lines.push(subLine.join(' · '));
       
-      const validBullets = exp.bullets.filter(b => b.trim());
+      const validBullets = exp.bullets.filter(b => b && b.trim());
       if (validBullets.length > 0) {
         lines.push('');
         lines.push(validBullets.join(' '));
@@ -113,7 +113,7 @@ export function formToMarkdown(form: BuilderFormState): string {
       
       if (proj.role) lines.push(proj.role);
       
-      const validBullets = proj.bullets.filter(b => b.trim());
+      const validBullets = proj.bullets.filter(b => b && b.trim());
       if (validBullets.length > 0) {
         lines.push('');
         lines.push(validBullets.join(' '));
