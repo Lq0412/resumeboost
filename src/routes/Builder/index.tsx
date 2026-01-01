@@ -4,13 +4,20 @@ import { formToMarkdown } from './formToMarkdown';
 import { saveSession, mask } from '../../lib';
 import { showToast } from '../../components';
 import { useRef, useState, useEffect } from 'react';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 
 type DensityMode = 'normal' | 'compact' | 'tight';
 
 export default function Builder() {
   const navigate = useNavigate();
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
   const [densityMode, setDensityMode] = useState<DensityMode>('normal');
+  const [hasDraft, setHasDraft] = useState(() => {
+    // 初始化时检查草稿
+    return !!localStorage.getItem('resumeboost_draft');
+  });
   const {
     form,
     updateBasicInfo,
@@ -36,7 +43,21 @@ export default function Builder() {
     addAward,
     removeAward,
     updateAward,
+    loadForm,
   } = useBuilderForm();
+
+  const handleLoadDraft = () => {
+    try {
+      const draft = localStorage.getItem('resumeboost_draft');
+      if (draft) {
+        loadForm(JSON.parse(draft));
+        showToast('草稿已加载', 'success');
+        setHasDraft(false);
+      }
+    } catch {
+      showToast('加载草稿失败', 'error');
+    }
+  };
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -56,6 +77,86 @@ export default function Builder() {
     reader.readAsDataURL(file);
   };
 
+  // 保存草稿到本地存储
+  const handleSaveDraft = () => {
+    try {
+      localStorage.setItem('resumeboost_draft', JSON.stringify(form));
+      showToast('草稿已保存', 'success');
+    } catch {
+      showToast('保存失败', 'error');
+    }
+  };
+
+  // 导出 PDF
+  const handleExportPDF = async () => {
+    const markdown = formToMarkdown(form);
+    if (markdown.trim().length < 50) {
+      showToast('请至少填写一些基本信息', 'error');
+      return;
+    }
+    
+    if (!previewRef.current) {
+      showToast('预览区域未就绪', 'error');
+      return;
+    }
+
+    showToast('正在生成 PDF...', 'info');
+    
+    try {
+      // 获取预览内容元素
+      const previewContent = previewRef.current;
+      
+      // 使用 html2canvas 截图
+      const canvas = await html2canvas(previewContent, {
+        scale: 2, // 提高清晰度
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+      });
+      
+      // 创建 PDF (A4 尺寸)
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      });
+      
+      const imgData = canvas.toDataURL('image/png');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      
+      // 计算图片在 PDF 中的尺寸
+      const imgWidth = pdfWidth;
+      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+      
+      // 如果内容超过一页，需要分页
+      if (imgHeight <= pdfHeight) {
+        pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+      } else {
+        let heightLeft = imgHeight;
+        let position = 0;
+        
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pdfHeight;
+        
+        while (heightLeft > 0) {
+          position = heightLeft - imgHeight;
+          pdf.addPage();
+          pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+          heightLeft -= pdfHeight;
+        }
+      }
+      
+      // 下载 PDF
+      const fileName = `${form.basicInfo.name || '简历'}_ResumeBoost.pdf`;
+      pdf.save(fileName);
+      showToast('PDF 已下载', 'success');
+    } catch (error) {
+      console.error('PDF 生成失败:', error);
+      showToast('PDF 生成失败，请重试', 'error');
+    }
+  };
+
   const handleSubmit = () => {
     const markdown = formToMarkdown(form);
     if (markdown.trim().length < 50) {
@@ -70,15 +171,34 @@ export default function Builder() {
 
   return (
     <div className="min-h-screen bg-gray-100">
+      {/* 草稿提示 */}
+      {hasDraft && (
+        <div className="bg-blue-50 border-b border-blue-200 px-4 py-2">
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <span className="text-sm text-blue-700">📝 检测到上次保存的草稿</span>
+            <div className="flex gap-2">
+              <button onClick={handleLoadDraft} className="text-sm text-blue-600 hover:text-blue-800 font-medium">加载草稿</button>
+              <button onClick={() => setHasDraft(false)} className="text-sm text-gray-500 hover:text-gray-700">忽略</button>
+            </div>
+          </div>
+        </div>
+      )}
+      
       <header className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <h1 className="text-xl font-bold text-gray-900 cursor-pointer hover:text-blue-600" onClick={() => navigate('/')}>
             ResumeBoost
           </h1>
-          <div className="flex items-center gap-3">
-            <button onClick={() => navigate('/')} className="px-4 py-2 text-gray-600 hover:text-gray-800">返回首页</button>
-            <button onClick={handleSubmit} className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">
-              完成并优化 →
+          <div className="flex items-center gap-2">
+            <button onClick={() => navigate('/')} className="px-3 py-2 text-gray-600 hover:text-gray-800 text-sm">返回首页</button>
+            <button onClick={handleSaveDraft} className="px-3 py-2 text-gray-600 hover:text-gray-800 border border-gray-300 rounded-lg text-sm">
+              💾 保存草稿
+            </button>
+            <button onClick={handleExportPDF} className="px-3 py-2 text-gray-700 hover:text-gray-900 border border-gray-300 rounded-lg text-sm">
+              📄 导出 PDF
+            </button>
+            <button onClick={handleSubmit} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
+              ✨ AI 优化 →
             </button>
           </div>
         </div>
@@ -348,7 +468,7 @@ export default function Builder() {
                 </div>
               </div>
               <div className="flex-1 overflow-auto p-4 flex justify-center">
-                <ResumePreview form={form} densityMode={densityMode} />
+                <ResumePreview form={form} densityMode={densityMode} previewRef={previewRef} />
               </div>
             </div>
           </div>
@@ -394,7 +514,11 @@ const densityStyles = {
 };
 
 // 简历预览组件 - A4纸张模拟
-function ResumePreview({ form, densityMode = 'normal' }: { form: ReturnType<typeof useBuilderForm>['form']; densityMode?: DensityMode }) {
+function ResumePreview({ form, densityMode = 'normal', previewRef }: { 
+  form: ReturnType<typeof useBuilderForm>['form']; 
+  densityMode?: DensityMode;
+  previewRef?: React.RefObject<HTMLDivElement | null>;
+}) {
   const contentRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0.6);
@@ -490,6 +614,7 @@ function ResumePreview({ form, densityMode = 'normal' }: { form: ReturnType<type
       >
         {/* 内容区域 */}
         <div 
+          ref={previewRef}
           className={styles.lineHeight}
           style={{ 
             transform: `scale(${scale})`,
@@ -498,6 +623,7 @@ function ResumePreview({ form, densityMode = 'normal' }: { form: ReturnType<type
             minHeight: A4_HEIGHT,
             padding: styles.padding,
             fontFamily: "'Microsoft YaHei', 'PingFang SC', sans-serif",
+            backgroundColor: '#ffffff',
           }}
         >
           <div ref={contentRef}>

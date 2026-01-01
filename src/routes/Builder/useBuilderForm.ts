@@ -233,6 +233,10 @@ export function useBuilderForm() {
 
   const reset = useCallback(() => { setForm(createInitialState()); }, []);
 
+  const loadForm = useCallback((data: BuilderFormState) => {
+    setForm(data);
+  }, []);
+
   return {
     form,
     updateBasicInfo,
@@ -259,5 +263,6 @@ export function useBuilderForm() {
     removeAward,
     updateAward,
     reset,
+    loadForm,
   };
 }
