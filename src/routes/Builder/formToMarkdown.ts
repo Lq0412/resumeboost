@@ -4,6 +4,15 @@
 
 import type { BuilderFormState } from './useBuilderForm';
 
+const formatTime = (startYear?: string, startMonth?: string, endYear?: string, endMonth?: string) => {
+  if (!startYear) return '';
+  const start = startMonth ? `${startYear}-${startMonth}` : startYear;
+  if (!endYear) return start;
+  if (endYear === 'present') return `${start} ~ 至今`;
+  const end = endMonth ? `${endYear}-${endMonth}` : endYear;
+  return `${start} ~ ${end}`;
+};
+
 export function formToMarkdown(form: BuilderFormState): string {
   const lines: string[] = [];
 
@@ -30,9 +39,10 @@ export function formToMarkdown(form: BuilderFormState): string {
     lines.push('## 教育经历');
     lines.push('');
     validEducation.forEach(edu => {
+      const time = formatTime(edu.startYear, edu.startMonth, edu.endYear, edu.endMonth);
       let line = `**${edu.school}**`;
       if (edu.major) line += ` ${edu.major}`;
-      if (edu.timePeriod) line += ` | ${edu.timePeriod}`;
+      if (time) line += ` | ${time}`;
       lines.push(line);
       if (edu.degree) lines.push(edu.degree);
       lines.push('');
@@ -44,7 +54,6 @@ export function formToMarkdown(form: BuilderFormState): string {
   if (validSkillCategories.length > 0 || form.skills) {
     lines.push('## 专业技能');
     lines.push('');
-    
     if (validSkillCategories.length > 0) {
       validSkillCategories.forEach(cat => {
         lines.push(`**${cat.name}**`);
@@ -63,8 +72,9 @@ export function formToMarkdown(form: BuilderFormState): string {
     lines.push('## 工作经历');
     lines.push('');
     validExperience.forEach(exp => {
+      const time = formatTime(exp.startYear, exp.startMonth, exp.endYear, exp.endMonth);
       let header = `**${exp.company}**`;
-      if (exp.timePeriod) header += ` | ${exp.timePeriod}`;
+      if (time) header += ` | ${time}`;
       lines.push(header);
       
       const subLine: string[] = [];
@@ -87,8 +97,9 @@ export function formToMarkdown(form: BuilderFormState): string {
     lines.push('## 项目经历');
     lines.push('');
     validProjects.forEach(proj => {
+      const time = formatTime(proj.startYear, proj.startMonth, proj.endYear, proj.endMonth);
       let header = `**${proj.name}**`;
-      if (proj.timePeriod) header += ` | ${proj.timePeriod}`;
+      if (time) header += ` | ${time}`;
       lines.push(header);
       
       const subLine: string[] = [];
