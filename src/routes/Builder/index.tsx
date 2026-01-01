@@ -104,6 +104,14 @@ export default function Builder() {
     showToast('正在生成 PDF...', 'info');
     
     try {
+      // 根据密度模式设置样式参数
+      const pdfStyles = {
+        normal: { padding: 40, titleSize: 24, sectionTitle: 15, text: 14, smallText: 13, sectionGap: 20, itemGap: 10, lineHeight: 1.5, photoW: 80, photoH: 112 },
+        compact: { padding: 32, titleSize: 20, sectionTitle: 14, text: 13, smallText: 12, sectionGap: 14, itemGap: 8, lineHeight: 1.4, photoW: 72, photoH: 100 },
+        tight: { padding: 24, titleSize: 18, sectionTitle: 12, text: 12, smallText: 11, sectionGap: 10, itemGap: 6, lineHeight: 1.3, photoW: 64, photoH: 88 },
+      };
+      const s = pdfStyles[densityMode];
+
       // 创建独立的渲染容器，使用纯内联样式
       const container = document.createElement('div');
       container.style.cssText = 'position:fixed;left:-9999px;top:0;';
@@ -118,13 +126,13 @@ export default function Builder() {
       };
 
       // 构建纯 HTML 内容，所有样式内联
-      let html = `<div style="width:794px;min-height:1123px;padding:40px;background:#fff;font-family:'Microsoft YaHei','PingFang SC',sans-serif;color:#374151;font-size:14px;line-height:1.5;">`;
+      let html = `<div style="width:794px;min-height:1123px;padding:${s.padding}px;background:#fff;font-family:'Microsoft YaHei','PingFang SC',sans-serif;color:#374151;font-size:${s.text}px;line-height:${s.lineHeight};">`;
       
       // 头部
-      html += `<div style="display:flex;margin-bottom:20px;">`;
+      html += `<div style="display:flex;margin-bottom:${s.sectionGap}px;">`;
       html += `<div style="flex:1;padding-right:16px;">`;
-      if (form.basicInfo.name) html += `<h1 style="font-size:24px;font-weight:bold;color:#111827;margin:0 0 4px 0;">${form.basicInfo.name}</h1>`;
-      if (form.basicInfo.jobTitle) html += `<p style="color:#374151;margin:0 0 4px 0;">求职意向：${form.basicInfo.jobTitle}</p>`;
+      if (form.basicInfo.name) html += `<h1 style="font-size:${s.titleSize}px;font-weight:bold;color:#111827;margin:0 0 4px 0;">${form.basicInfo.name}</h1>`;
+      if (form.basicInfo.jobTitle) html += `<p style="font-size:${s.text}px;color:#374151;margin:0 0 4px 0;">求职意向：${form.basicInfo.jobTitle}</p>`;
       
       const contacts: string[] = [];
       if (form.basicInfo.phone) contacts.push(`📱 ${form.basicInfo.phone}`);
@@ -137,21 +145,21 @@ export default function Builder() {
       if (form.basicInfo.website) contacts.push(`🌐 ${form.basicInfo.website}`);
       
       if (contacts.length > 0) {
-        html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;color:#4b5563;font-size:13px;">`;
+        html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;color:#4b5563;font-size:${s.smallText}px;">`;
         contacts.forEach(c => { html += `<span>${c}</span>`; });
         html += `</div>`;
       }
       html += `</div>`;
-      if (form.photo) html += `<img src="${form.photo}" style="width:80px;height:112px;object-fit:cover;border-radius:4px;flex-shrink:0;" />`;
+      if (form.photo) html += `<img src="${form.photo}" style="width:${s.photoW}px;height:${s.photoH}px;object-fit:cover;border-radius:4px;flex-shrink:0;" />`;
       html += `</div>`;
 
       // 教育经历
       const validEdu = form.education.filter(e => e.school);
       if (validEdu.length > 0) {
-        html += `<div style="margin-bottom:16px;"><h2 style="font-size:15px;font-weight:bold;color:#111827;border-bottom:2px solid #1f2937;padding-bottom:4px;margin:0 0 10px 0;">教育经历</h2>`;
+        html += `<div style="margin-bottom:${s.sectionGap}px;"><h2 style="font-size:${s.sectionTitle}px;font-weight:bold;color:#111827;border-bottom:2px solid #1f2937;padding-bottom:4px;margin:0 0 ${s.itemGap}px 0;">教育经历</h2>`;
         validEdu.forEach(edu => {
-          html += `<div style="margin-bottom:8px;"><div style="display:flex;justify-content:space-between;"><span style="font-weight:600;">${edu.school}${edu.major ? ` <span style="color:#4b5563;font-weight:normal;">${edu.major}</span>` : ''}</span><span style="color:#6b7280;font-size:13px;">${formatTime(edu.startYear, edu.startMonth, edu.endYear, edu.endMonth)}</span></div>`;
-          if (edu.degree) html += `<div style="color:#4b5563;font-size:13px;">${edu.degree}</div>`;
+          html += `<div style="margin-bottom:${s.itemGap}px;"><div style="display:flex;justify-content:space-between;"><span style="font-weight:600;">${edu.school}${edu.major ? ` <span style="color:#4b5563;font-weight:normal;">${edu.major}</span>` : ''}</span><span style="color:#6b7280;font-size:${s.smallText}px;">${formatTime(edu.startYear, edu.startMonth, edu.endYear, edu.endMonth)}</span></div>`;
+          if (edu.degree) html += `<div style="color:#4b5563;font-size:${s.smallText}px;">${edu.degree}</div>`;
           html += `</div>`;
         });
         html += `</div>`;
@@ -160,15 +168,15 @@ export default function Builder() {
       // 专业技能
       const validSkills = form.skillCategories?.filter(c => c.name) || [];
       if (validSkills.length > 0 || form.skills) {
-        html += `<div style="margin-bottom:16px;"><h2 style="font-size:15px;font-weight:bold;color:#111827;border-bottom:2px solid #1f2937;padding-bottom:4px;margin:0 0 10px 0;">专业技能</h2>`;
+        html += `<div style="margin-bottom:${s.sectionGap}px;"><h2 style="font-size:${s.sectionTitle}px;font-weight:bold;color:#111827;border-bottom:2px solid #1f2937;padding-bottom:4px;margin:0 0 ${s.itemGap}px 0;">专业技能</h2>`;
         if (validSkills.length > 0) {
           validSkills.forEach(cat => {
-            html += `<div style="margin-bottom:6px;"><span style="font-weight:600;">${cat.name}</span>`;
-            if (cat.description) html += `<p style="color:#374151;margin:2px 0 0 0;font-size:13px;">${cat.description}</p>`;
+            html += `<div style="margin-bottom:${s.itemGap - 2}px;"><span style="font-weight:600;">${cat.name}</span>`;
+            if (cat.description) html += `<p style="color:#374151;margin:2px 0 0 0;font-size:${s.smallText}px;">${cat.description}</p>`;
             html += `</div>`;
           });
         } else if (form.skills) {
-          html += `<p style="color:#374151;margin:0;">${form.skills}</p>`;
+          html += `<p style="color:#374151;margin:0;font-size:${s.smallText}px;">${form.skills}</p>`;
         }
         html += `</div>`;
       }
@@ -176,12 +184,12 @@ export default function Builder() {
       // 工作经历
       const validExp = form.experience.filter(e => e.company);
       if (validExp.length > 0) {
-        html += `<div style="margin-bottom:16px;"><h2 style="font-size:15px;font-weight:bold;color:#111827;border-bottom:2px solid #1f2937;padding-bottom:4px;margin:0 0 10px 0;">工作经历</h2>`;
+        html += `<div style="margin-bottom:${s.sectionGap}px;"><h2 style="font-size:${s.sectionTitle}px;font-weight:bold;color:#111827;border-bottom:2px solid #1f2937;padding-bottom:4px;margin:0 0 ${s.itemGap}px 0;">工作经历</h2>`;
         validExp.forEach(exp => {
-          html += `<div style="margin-bottom:10px;"><div style="display:flex;justify-content:space-between;"><span style="font-weight:600;">${exp.company}</span><span style="color:#6b7280;font-size:13px;">${formatTime(exp.startYear, exp.startMonth, exp.endYear, exp.endMonth)}</span></div>`;
-          html += `<div style="color:#4b5563;font-size:13px;">${exp.position}${exp.location ? ` · ${exp.location}` : ''}</div>`;
+          html += `<div style="margin-bottom:${s.itemGap}px;"><div style="display:flex;justify-content:space-between;"><span style="font-weight:600;">${exp.company}</span><span style="color:#6b7280;font-size:${s.smallText}px;">${formatTime(exp.startYear, exp.startMonth, exp.endYear, exp.endMonth)}</span></div>`;
+          html += `<div style="color:#4b5563;font-size:${s.smallText}px;">${exp.position}${exp.location ? ` · ${exp.location}` : ''}</div>`;
           const bullets = exp.bullets.filter(b => b && b.trim());
-          if (bullets.length > 0) html += `<p style="color:#374151;margin:4px 0 0 0;font-size:13px;">${bullets.join(' ')}</p>`;
+          if (bullets.length > 0) html += `<p style="color:#374151;margin:4px 0 0 0;font-size:${s.smallText}px;">${bullets.join(' ')}</p>`;
           html += `</div>`;
         });
         html += `</div>`;
@@ -190,14 +198,14 @@ export default function Builder() {
       // 项目经历
       const validProj = form.projects.filter(p => p.name);
       if (validProj.length > 0) {
-        html += `<div style="margin-bottom:16px;"><h2 style="font-size:15px;font-weight:bold;color:#111827;border-bottom:2px solid #1f2937;padding-bottom:4px;margin:0 0 10px 0;">项目经历</h2>`;
+        html += `<div style="margin-bottom:${s.sectionGap}px;"><h2 style="font-size:${s.sectionTitle}px;font-weight:bold;color:#111827;border-bottom:2px solid #1f2937;padding-bottom:4px;margin:0 0 ${s.itemGap}px 0;">项目经历</h2>`;
         validProj.forEach(proj => {
-          html += `<div style="margin-bottom:10px;"><div style="display:flex;justify-content:space-between;"><span><span style="font-weight:600;">${proj.name}</span>${proj.link ? ` <a href="${proj.link}" style="color:#2563eb;font-size:12px;margin-left:8px;">${proj.link}</a>` : ''}</span><span style="color:#6b7280;font-size:13px;">${formatTime(proj.startYear, proj.startMonth, proj.endYear, proj.endMonth)}</span></div>`;
-          if (proj.role) html += `<div style="color:#4b5563;font-size:13px;">${proj.role}</div>`;
+          html += `<div style="margin-bottom:${s.itemGap}px;"><div style="display:flex;justify-content:space-between;"><span><span style="font-weight:600;">${proj.name}</span>${proj.link ? ` <a href="${proj.link}" style="color:#2563eb;font-size:${s.smallText - 1}px;margin-left:8px;">${proj.link}</a>` : ''}</span><span style="color:#6b7280;font-size:${s.smallText}px;">${formatTime(proj.startYear, proj.startMonth, proj.endYear, proj.endMonth)}</span></div>`;
+          if (proj.role) html += `<div style="color:#4b5563;font-size:${s.smallText}px;">${proj.role}</div>`;
           const bullets = proj.bullets.filter(b => b && b.trim());
           if (bullets.length > 0) {
             html += `<ul style="margin:4px 0 0 0;padding-left:16px;">`;
-            bullets.forEach(b => { html += `<li style="color:#374151;font-size:13px;margin-bottom:2px;">${b}</li>`; });
+            bullets.forEach(b => { html += `<li style="color:#374151;font-size:${s.smallText}px;margin-bottom:2px;">${b}</li>`; });
             html += `</ul>`;
           }
           html += `</div>`;
@@ -208,9 +216,9 @@ export default function Builder() {
       // 荣誉奖项
       const validAwards = form.awards?.filter(a => a.name) || [];
       if (validAwards.length > 0) {
-        html += `<div style="margin-bottom:16px;"><h2 style="font-size:15px;font-weight:bold;color:#111827;border-bottom:2px solid #1f2937;padding-bottom:4px;margin:0 0 10px 0;">荣誉奖项</h2>`;
+        html += `<div style="margin-bottom:${s.sectionGap}px;"><h2 style="font-size:${s.sectionTitle}px;font-weight:bold;color:#111827;border-bottom:2px solid #1f2937;padding-bottom:4px;margin:0 0 ${s.itemGap}px 0;">荣誉奖项</h2>`;
         validAwards.forEach(award => {
-          html += `<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="font-size:13px;">${award.name}</span>${award.time ? `<span style="color:#6b7280;font-size:13px;">${award.time}</span>` : ''}</div>`;
+          html += `<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="font-size:${s.smallText}px;">${award.name}</span>${award.time ? `<span style="color:#6b7280;font-size:${s.smallText}px;">${award.time}</span>` : ''}</div>`;
         });
         html += `</div>`;
       }
