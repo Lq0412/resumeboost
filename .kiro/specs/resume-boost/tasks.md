@@ -25,7 +25,7 @@
     - TabNav 标签页导航
     - _Requirements: 5.5, 10.1, 10.2, 10.3, 10.4_
 
-- [-] 2. 核心服务模块实现
+- [x] 2. 核心服务模块实现
   - [x] 2.1 实现脱敏服务 (masking.ts)
     - 实现手机号、邮箱、身份证、地址行的正则匹配
     - 实现 mask() 函数生成占位符和映射表
@@ -49,12 +49,12 @@
     - **Property 12: Form Required Field Validation**
     - **Validates: Requirements 2.5, 12.1, 12.2, 12.3, 12.5**
 
-  - [-] 2.5 实现会话存储服务 (session.ts)
+  - [x] 2.5 实现会话存储服务 (session.ts)
     - 实现 save/load/clear 函数
     - 存储 resumeText、jdText、appliedRewrites、maskingMap
     - _Requirements: 11.1, 11.2, 11.3_
 
-  - [ ] 2.6 实现 API 客户端 (api.ts)
+  - [x] 2.6 实现 API 客户端 (api.ts)
     - 实现统一的 fetchJson 函数
     - 实现错误处理和状态码映射
     - 实现 analyze/match/rewrite/finalize 四个 API 调用函数
