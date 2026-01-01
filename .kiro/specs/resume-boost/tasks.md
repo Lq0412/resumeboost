@@ -77,7 +77,7 @@
     - **Validates: Requirements 3.1, 3.4**
 
 - [ ] 5. Landing Page 实现
-  - [ ] 5.1 实现入口页面组件
+  - [x] 5.1 实现入口页面组件
     - 创建两个入口卡片："我有简历" / "我没有简历"
     - 实现导航跳转逻辑
     - 添加隐私声明文案
@@ -89,13 +89,13 @@
     - 测试隐私声明显示
     - _Requirements: 1.1, 1.2, 1.3, 1.4_
 
-- [ ] 6. Builder Page 实现
-  - [ ] 6.1 实现表单数据模型和状态管理
+- [x] 6. Builder Page 实现
+  - [x] 6.1 实现表单数据模型和状态管理
     - 定义 BasicInfo、EducationEntry、ExperienceEntry、ProjectEntry 类型
     - 实现表单状态 hook
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
 
-  - [ ] 6.2 实现表单 UI 组件
+  - [x] 6.2 实现表单 UI 组件
     - 基本信息表单区
     - 教育经历动态列表（可添加/删除）
     - 工作经历动态列表
@@ -103,7 +103,7 @@
     - 技能输入框
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
 
-  - [ ] 6.3 实现 Markdown 生成逻辑
+  - [x] 6.3 实现 Markdown 生成逻辑
     - 实现 formToMarkdown() 函数
     - 遵循 Simple_V1_Template 结构
     - 集成脱敏服务
@@ -113,7 +113,7 @@
     - **Property 2: Form to Markdown Generation**
     - **Validates: Requirements 2.6**
 
-  - [ ] 6.5 实现表单提交和跳转
+  - [x] 6.5 实现表单提交和跳转
     - 验证必填字段
     - 生成 Markdown 并存入 sessionStorage
     - 跳转到 /app
