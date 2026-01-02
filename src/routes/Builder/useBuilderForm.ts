@@ -154,6 +154,18 @@ export function useBuilderForm() {
     }));
   }, []);
 
+  const removeExperienceBullet = useCallback((id: string, index: number) => {
+    setForm((prev) => ({
+      ...prev,
+      experience: prev.experience.map((e) => {
+        if (e.id !== id || e.bullets.length <= 1) return e;
+        const bullets = [...e.bullets];
+        bullets.splice(index, 1);
+        return { ...e, bullets };
+      }),
+    }));
+  }, []);
+
   const addProject = useCallback(() => {
     setForm((prev) => ({
       ...prev,
@@ -251,6 +263,7 @@ export function useBuilderForm() {
     updateExperience,
     updateExperienceBullet,
     addExperienceBullet,
+    removeExperienceBullet,
     addProject,
     removeProject,
     updateProject,

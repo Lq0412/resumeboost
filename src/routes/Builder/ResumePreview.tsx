@@ -19,18 +19,46 @@ export function ResumePreview({ form, densityMode = 'normal', previewRef, onOver
   
   const styles = densityStyles[densityMode];
 
-  // 计算内容高度和页数
+  // 计算可用高度（A4 高度减去上下 padding）
+  const availableHeight = A4_HEIGHT - styles.padding * 2;
+
+  // 使用 ResizeObserver 监听内容高度变化
   useEffect(() => {
-    if (contentRef.current) {
-      setContentHeight(contentRef.current.scrollHeight);
-    }
-  }, [form, densityMode]);
+    const contentEl = contentRef.current;
+    if (!contentEl) return;
+
+    const updateHeight = () => {
+      requestAnimationFrame(() => {
+        if (contentRef.current) {
+          const height = contentRef.current.scrollHeight;
+          setContentHeight(height);
+        }
+      });
+    };
+
+    updateHeight();
+
+    const resizeObserver = new ResizeObserver(updateHeight);
+    resizeObserver.observe(contentEl);
+
+    const mutationObserver = new MutationObserver(updateHeight);
+    mutationObserver.observe(contentEl, { 
+      childList: true, 
+      subtree: true, 
+      characterData: true 
+    });
+
+    return () => {
+      resizeObserver.disconnect();
+      mutationObserver.disconnect();
+    };
+  }, [densityMode, form]);
 
   // 通知父组件溢出状态
   useEffect(() => {
-    const overflow = contentHeight > (A4_HEIGHT - styles.padding * 2);
+    const overflow = contentHeight > availableHeight;
     onOverflowChange?.(overflow);
-  }, [contentHeight, styles.padding, onOverflowChange]);
+  }, [contentHeight, availableHeight, onOverflowChange]);
 
   // 根据容器宽度自动调整缩放
   useEffect(() => {
@@ -46,9 +74,9 @@ export function ResumePreview({ form, densityMode = 'normal', previewRef, onOver
     return () => window.removeEventListener('resize', updateScale);
   }, []);
 
-  const usedPercent = Math.min(100, Math.round((contentHeight / (A4_HEIGHT - styles.padding * 2)) * 100));
-  const isOverflow = contentHeight > (A4_HEIGHT - styles.padding * 2);
-  const pages = Math.ceil(contentHeight / (A4_HEIGHT - styles.padding * 2));
+  const usedPercent = Math.min(100, Math.round((contentHeight / availableHeight) * 100));
+  const isOverflow = contentHeight > availableHeight;
+  const pages = Math.ceil(contentHeight / availableHeight);
 
   const hasContent = form.basicInfo.name || form.basicInfo.phone || form.education.some(e => e.school);
 
@@ -244,9 +272,14 @@ export function ResumePreview({ form, densityMode = 'normal', previewRef, onOver
                       </span>
                     </div>
                     {exp.bullets.filter(b => b && b.trim()).length > 0 && (
-                      <p className={`text-gray-700 ${styles.textSize}`}>
-                        {exp.bullets.filter(b => b && b.trim()).join(' ')}
-                      </p>
+                      <ul className="space-y-0">
+                        {exp.bullets.filter(b => b && b.trim()).map((bullet, i) => (
+                          <li key={i} className={`text-gray-700 ${styles.textSize} flex`}>
+                            <span className="mr-1">•</span>
+                            <span>{bullet}</span>
+                          </li>
+                        ))}
+                      </ul>
                     )}
                   </div>
                 ))}

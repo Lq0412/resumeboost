@@ -46,17 +46,52 @@ export function EditablePreview({
   
   const styles = densityStyles[densityMode];
 
-  useEffect(() => {
-    if (contentRef.current) {
-      setContentHeight(contentRef.current.scrollHeight);
-    }
-  }, [form, densityMode]);
+  // 计算可用高度（A4 高度减去上下 padding）
+  const availableHeight = A4_HEIGHT - styles.padding * 2;
 
+  // 使用 ResizeObserver 监听内容高度变化
   useEffect(() => {
-    const overflow = contentHeight > (A4_HEIGHT - styles.padding * 2);
+    const contentEl = contentRef.current;
+    if (!contentEl) return;
+
+    const updateHeight = () => {
+      // 使用 requestAnimationFrame 确保 DOM 已更新
+      requestAnimationFrame(() => {
+        if (contentRef.current) {
+          const height = contentRef.current.scrollHeight;
+          setContentHeight(height);
+        }
+      });
+    };
+
+    // 初始计算
+    updateHeight();
+
+    // 使用 ResizeObserver 监听大小变化
+    const resizeObserver = new ResizeObserver(updateHeight);
+    resizeObserver.observe(contentEl);
+
+    // 使用 MutationObserver 监听内容变化
+    const mutationObserver = new MutationObserver(updateHeight);
+    mutationObserver.observe(contentEl, { 
+      childList: true, 
+      subtree: true, 
+      characterData: true 
+    });
+
+    return () => {
+      resizeObserver.disconnect();
+      mutationObserver.disconnect();
+    };
+  }, [densityMode, form]);
+
+  // 通知父组件溢出状态
+  useEffect(() => {
+    const overflow = contentHeight > availableHeight;
     onOverflowChange?.(overflow);
-  }, [contentHeight, styles.padding, onOverflowChange]);
+  }, [contentHeight, availableHeight, onOverflowChange]);
 
+  // 根据容器宽度自动调整缩放
   useEffect(() => {
     const updateScale = () => {
       if (containerRef.current) {
@@ -70,9 +105,9 @@ export function EditablePreview({
     return () => window.removeEventListener('resize', updateScale);
   }, []);
 
-  const usedPercent = Math.min(100, Math.round((contentHeight / (A4_HEIGHT - styles.padding * 2)) * 100));
-  const isOverflow = contentHeight > (A4_HEIGHT - styles.padding * 2);
-  const pages = Math.ceil(contentHeight / (A4_HEIGHT - styles.padding * 2));
+  const usedPercent = Math.min(100, Math.round((contentHeight / availableHeight) * 100));
+  const isOverflow = contentHeight > availableHeight;
+  const pages = Math.ceil(contentHeight / availableHeight);
 
   const hasContent = form.basicInfo.name || form.basicInfo.phone || form.education.some(e => e.school);
 
@@ -98,7 +133,7 @@ export function EditablePreview({
       {/* 页面使用情况指示器 */}
       <div className="w-full max-w-md mb-3">
         <div className="flex justify-between text-xs text-gray-300 mb-1">
-          <span>页面使用: {usedPercent}%</span>
+          <span>页面使用: {usedPercent}% <span className="text-gray-500 text-[10px]">(点击可编辑)</span></span>
           <span>{isOverflow ? `⚠️ 约 ${pages} 页` : '✓ 1 页内'}</span>
         </div>
         <div className="h-2 bg-gray-600 rounded-full overflow-hidden">
@@ -115,11 +150,6 @@ export function EditablePreview({
             <p className="text-amber-200 text-xs">💡 切换到「紧凑」或「极简」模式</p>
           </div>
         )}
-      </div>
-
-      {/* 编辑提示 */}
-      <div className="w-full max-w-md mb-2">
-        <p className="text-xs text-gray-400 text-center">💡 点击下方内容可直接编辑</p>
       </div>
 
       {/* A4 纸张 */}
@@ -143,7 +173,7 @@ export function EditablePreview({
           <div ref={contentRef}>
             {/* 头部 */}
             <div 
-              className={`${styles.sectionGap} flex cursor-pointer hover:bg-blue-50/50 -mx-2 px-2 py-1 rounded transition-colors`}
+              className={`${styles.sectionGap} flex cursor-pointer hover:bg-blue-50/50 -mx-2 px-2 rounded transition-colors`}
               onClick={() => onSectionClick?.('basic')}
             >
               <div className="flex-1 pr-4">
@@ -205,6 +235,56 @@ export function EditablePreview({
                       </EditableField>
                     </span>
                   )}
+                  {form.basicInfo.birthYear && (
+                    <span>
+                      🎂 <EditableField
+                        value={form.basicInfo.birthYear}
+                        onChange={(v) => onUpdateBasicInfo('birthYear', v)}
+                      >
+                        {form.basicInfo.birthYear}
+                      </EditableField>
+                      {form.basicInfo.birthMonth && (
+                        <>
+                          -<EditableField
+                            value={form.basicInfo.birthMonth}
+                            onChange={(v) => onUpdateBasicInfo('birthMonth', v)}
+                          >
+                            {form.basicInfo.birthMonth}
+                          </EditableField>
+                        </>
+                      )}
+                    </span>
+                  )}
+                  {form.basicInfo.hometown && (
+                    <span>
+                      🏠 <EditableField
+                        value={form.basicInfo.hometown}
+                        onChange={(v) => onUpdateBasicInfo('hometown', v)}
+                      >
+                        {form.basicInfo.hometown}
+                      </EditableField>
+                    </span>
+                  )}
+                  {form.basicInfo.github && (
+                    <span className="text-blue-600">
+                      🔗 <EditableField
+                        value={form.basicInfo.github}
+                        onChange={(v) => onUpdateBasicInfo('github', v)}
+                      >
+                        {form.basicInfo.github}
+                      </EditableField>
+                    </span>
+                  )}
+                  {form.basicInfo.website && (
+                    <span className="text-blue-600">
+                      🌐 <EditableField
+                        value={form.basicInfo.website}
+                        onChange={(v) => onUpdateBasicInfo('website', v)}
+                      >
+                        {form.basicInfo.website}
+                      </EditableField>
+                    </span>
+                  )}
                 </div>
               </div>
               {form.photo && (
@@ -219,7 +299,7 @@ export function EditablePreview({
             {/* 教育经历 */}
             {form.education.some(e => e.school) && (
               <div 
-                className={`${styles.sectionGap} cursor-pointer hover:bg-blue-50/50 -mx-2 px-2 py-1 rounded transition-colors`}
+                className={`${styles.sectionGap} cursor-pointer hover:bg-blue-50/50 -mx-2 px-2 rounded transition-colors`}
                 onClick={() => onSectionClick?.('edu')}
               >
                 <h2 className={`${styles.sectionTitleSize} font-bold text-gray-900 border-b-2 border-gray-800 pb-2 mb-2`}>
@@ -281,7 +361,7 @@ export function EditablePreview({
             {/* 专业技能 */}
             {(form.skillCategories?.some(c => c.name) || form.skills) && (
               <div 
-                className={`${styles.sectionGap} cursor-pointer hover:bg-blue-50/50 -mx-2 px-2 py-1 rounded transition-colors`}
+                className={`${styles.sectionGap} cursor-pointer hover:bg-blue-50/50 -mx-2 px-2 rounded transition-colors`}
                 onClick={() => onSectionClick?.('skill')}
               >
                 <h2 className={`${styles.sectionTitleSize} font-bold text-gray-900 border-b-2 border-gray-800 pb-2 mb-2`}>
@@ -327,7 +407,7 @@ export function EditablePreview({
             {/* 工作经历 */}
             {form.experience.some(e => e.company) && (
               <div 
-                className={`${styles.sectionGap} cursor-pointer hover:bg-blue-50/50 -mx-2 px-2 py-1 rounded transition-colors`}
+                className={`${styles.sectionGap} cursor-pointer hover:bg-blue-50/50 -mx-2 px-2 rounded transition-colors`}
                 onClick={() => onSectionClick?.('work')}
               >
                 <h2 className={`${styles.sectionTitleSize} font-bold text-gray-900 border-b-2 border-gray-800 pb-2 mb-2`}>
@@ -361,18 +441,19 @@ export function EditablePreview({
                       </span>
                     </div>
                     {exp.bullets.filter(b => b && b.trim()).length > 0 && (
-                      <div className={`text-gray-700 ${styles.textSize}`}>
+                      <ul className="space-y-0">
                         {exp.bullets.filter(b => b && b.trim()).map((bullet, i) => (
-                          <p key={i} className="mb-0.5">
+                          <li key={i} className={`text-gray-700 ${styles.textSize} flex`}>
+                            <span className="mr-1">•</span>
                             <EditableField
                               value={bullet}
                               onChange={(v) => onUpdateExperienceBullet(exp.id, i, v)}
                             >
                               {bullet}
                             </EditableField>
-                          </p>
+                          </li>
                         ))}
-                      </div>
+                      </ul>
                     )}
                   </div>
                 ))}
@@ -382,7 +463,7 @@ export function EditablePreview({
             {/* 项目经历 */}
             {form.projects.some(p => p.name) && (
               <div 
-                className={`${styles.sectionGap} cursor-pointer hover:bg-blue-50/50 -mx-2 px-2 py-1 rounded transition-colors`}
+                className={`${styles.sectionGap} cursor-pointer hover:bg-blue-50/50 -mx-2 px-2 rounded transition-colors`}
                 onClick={() => onSectionClick?.('project')}
               >
                 <h2 className={`${styles.sectionTitleSize} font-bold text-gray-900 border-b-2 border-gray-800 pb-2 mb-2`}>
@@ -438,7 +519,7 @@ export function EditablePreview({
             {/* 荣誉奖项 */}
             {form.awards?.some(a => a.name) && (
               <div 
-                className={`${styles.sectionGap} cursor-pointer hover:bg-blue-50/50 -mx-2 px-2 py-1 rounded transition-colors`}
+                className={`${styles.sectionGap} cursor-pointer hover:bg-blue-50/50 -mx-2 px-2 rounded transition-colors`}
                 onClick={() => onSectionClick?.('award')}
               >
                 <h2 className={`${styles.sectionTitleSize} font-bold text-gray-900 border-b-2 border-gray-800 pb-2 mb-2`}>

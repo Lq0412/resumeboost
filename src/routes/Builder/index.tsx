@@ -67,6 +67,8 @@ export default function Builder() {
     removeExperience,
     updateExperience,
     updateExperienceBullet,
+    addExperienceBullet,
+    removeExperienceBullet,
     addProject,
     removeProject,
     updateProject,
@@ -392,19 +394,19 @@ export default function Builder() {
                     <div className="flex gap-1"><CompactInput value={exp.company} onChange={(v) => updateExperience(exp.id, 'company', v)} placeholder="公司" /><CompactInput value={exp.position} onChange={(v) => updateExperience(exp.id, 'position', v)} placeholder="职位" /></div>
                     <CompactInput value={exp.location || ''} onChange={(v) => updateExperience(exp.id, 'location', v)} placeholder="地点" />
                     <CompactDateRange startYear={exp.startYear} startMonth={exp.startMonth} endYear={exp.endYear} endMonth={exp.endMonth} onStartChange={(y, m) => { updateExperience(exp.id, 'startYear', y); updateExperience(exp.id, 'startMonth', m); }} onEndChange={(y, m) => { updateExperience(exp.id, 'endYear', y); updateExperience(exp.id, 'endMonth', m); }} showPresent />
-                    <textarea 
-                      value={exp.bullets.join('\n')} 
-                      onChange={(e) => { 
-                        const lines = e.target.value.split('\n'); 
-                        lines.forEach((line, i) => { 
-                          if (i < exp.bullets.length) updateExperienceBullet(exp.id, i, line); 
-                        }); 
-                        handleTextareaResize(e);
-                      }} 
-                      onFocus={handleTextareaFocus}
-                      className="w-full px-2 py-2 text-xs border border-gray-300 rounded-md resize-none min-h-[60px] focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-gray-400" 
-                      placeholder="工作内容和成果（每行一条）" 
-                    />
+                    {exp.bullets.map((b, bi) => (
+                      <div key={bi} className="flex gap-1">
+                        <textarea 
+                          value={b} 
+                          onChange={(e) => { updateExperienceBullet(exp.id, bi, e.target.value); handleTextareaResize(e); }}
+                          onFocus={handleTextareaFocus}
+                          className="flex-1 px-2 py-2 text-xs border border-gray-300 rounded-md resize-none min-h-[40px] focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-gray-400" 
+                          placeholder={`工作内容 ${bi + 1}`} 
+                        />
+                        {exp.bullets.length > 1 && <button onClick={() => removeExperienceBullet(exp.id, bi)} className="text-red-400 text-xs px-1">×</button>}
+                      </div>
+                    ))}
+                    {exp.bullets.length < 5 && <button onClick={() => addExperienceBullet(exp.id)} className="text-xs text-blue-600">+ 描述</button>}
                   </div>
                 ))}
               </div>
@@ -421,7 +423,18 @@ export default function Builder() {
                     <div className="flex gap-1"><CompactInput value={proj.name} onChange={(v) => updateProject(proj.id, 'name', v)} placeholder="项目名" /><CompactInput value={proj.role || ''} onChange={(v) => updateProject(proj.id, 'role', v)} placeholder="角色" /></div>
                     <CompactInput value={proj.link || ''} onChange={(v) => updateProject(proj.id, 'link', v)} placeholder="链接" />
                     <CompactDateRange startYear={proj.startYear} startMonth={proj.startMonth} endYear={proj.endYear} endMonth={proj.endMonth} onStartChange={(y, m) => { updateProject(proj.id, 'startYear', y); updateProject(proj.id, 'startMonth', m); }} onEndChange={(y, m) => { updateProject(proj.id, 'endYear', y); updateProject(proj.id, 'endMonth', m); }} />
-                    {proj.bullets.map((b, bi) => (<div key={bi} className="flex gap-1"><input value={b} onChange={(e) => updateProjectBullet(proj.id, bi, e.target.value)} className="flex-1 px-2 py-1 text-xs border border-gray-200 rounded" placeholder="描述" />{proj.bullets.length > 1 && <button onClick={() => removeProjectBullet(proj.id, bi)} className="text-red-400 text-xs">×</button>}</div>))}
+                    {proj.bullets.map((b, bi) => (
+                      <div key={bi} className="flex gap-1">
+                        <textarea 
+                          value={b} 
+                          onChange={(e) => { updateProjectBullet(proj.id, bi, e.target.value); handleTextareaResize(e); }}
+                          onFocus={handleTextareaFocus}
+                          className="flex-1 px-2 py-2 text-xs border border-gray-300 rounded-md resize-none min-h-[40px] focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-gray-400" 
+                          placeholder={`描述 ${bi + 1}`} 
+                        />
+                        {proj.bullets.length > 1 && <button onClick={() => removeProjectBullet(proj.id, bi)} className="text-red-400 text-xs px-1">×</button>}
+                      </div>
+                    ))}
                     {proj.bullets.length < 5 && <button onClick={() => addProjectBullet(proj.id)} className="text-xs text-blue-600">+ 描述</button>}
                   </div>
                 ))}
