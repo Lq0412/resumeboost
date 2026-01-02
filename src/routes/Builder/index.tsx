@@ -6,6 +6,7 @@ import { mask } from '../../lib';
 import { showToast, LoadingSkeleton } from '../../components';
 import { api, handleAPIError } from '../../lib/api';
 import { ResumePreview } from './ResumePreview';
+import { EditablePreview } from './EditablePreview';
 import { CompactInput, CompactDateRange } from './FormInputs';
 import { useAutoResizeTextarea, useDragResize } from './hooks';
 import { exportToPDF } from './pdfExport';
@@ -33,6 +34,7 @@ export default function Builder() {
   const [densityMode, setDensityMode] = useState<DensityMode>('normal');
   const [hasDraft, setHasDraft] = useState(() => !!localStorage.getItem('resumeboost_draft'));
   const [isOverflowing, setIsOverflowing] = useState(false);
+  const [editMode, setEditMode] = useState<'form' | 'preview'>('preview'); // 默认使用可编辑预览
   
   // Cursor 风格：Tab 切换 + AI 侧边栏
   const [activeTab, setActiveTab] = useState<EditTab>('basic');
@@ -441,7 +443,31 @@ export default function Builder() {
         {/* 中间：预览区 */}
         <div className="flex-1 min-w-0 bg-gradient-to-br from-gray-500 to-gray-600 flex flex-col overflow-hidden">
           <div className="h-10 bg-gray-700 px-4 flex items-center justify-between flex-shrink-0 shadow-md">
-            <span className="text-xs font-medium text-gray-100">📄 简历预览</span>
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-medium text-gray-100">📄 简历预览</span>
+              <div className="flex items-center bg-gray-600 rounded-md p-0.5">
+                <button
+                  onClick={() => setEditMode('preview')}
+                  className={`px-2 py-1 text-xs rounded transition-all ${
+                    editMode === 'preview' 
+                      ? 'bg-blue-600 text-white' 
+                      : 'text-gray-300 hover:text-white'
+                  }`}
+                >
+                  ✏️ 可编辑
+                </button>
+                <button
+                  onClick={() => setEditMode('form')}
+                  className={`px-2 py-1 text-xs rounded transition-all ${
+                    editMode === 'form' 
+                      ? 'bg-blue-600 text-white' 
+                      : 'text-gray-300 hover:text-white'
+                  }`}
+                >
+                  👁️ 只读
+                </button>
+              </div>
+            </div>
             <div className="flex items-center gap-2">
               {isOverflowing && (
                 <div className="flex items-center gap-1.5 px-2 py-1 bg-amber-500/20 border border-amber-400/50 rounded-md">
@@ -464,12 +490,30 @@ export default function Builder() {
             </div>
           </div>
           <div className="flex-1 overflow-auto p-4 flex justify-center items-start custom-scrollbar">
-            <ResumePreview 
-              form={form} 
-              densityMode={densityMode} 
-              previewRef={previewRef} 
-              onOverflowChange={setIsOverflowing}
-            />
+            {editMode === 'preview' ? (
+              <EditablePreview 
+                form={form} 
+                densityMode={densityMode} 
+                previewRef={previewRef} 
+                onOverflowChange={setIsOverflowing}
+                onUpdateBasicInfo={updateBasicInfo}
+                onUpdateEducation={updateEducation}
+                onUpdateExperience={updateExperience}
+                onUpdateExperienceBullet={updateExperienceBullet}
+                onUpdateProject={updateProject}
+                onUpdateProjectBullet={updateProjectBullet}
+                onUpdateSkillCategory={updateSkillCategory}
+                onUpdateSkills={updateSkills}
+                onUpdateAward={updateAward}
+              />
+            ) : (
+              <ResumePreview 
+                form={form} 
+                densityMode={densityMode} 
+                previewRef={previewRef} 
+                onOverflowChange={setIsOverflowing}
+              />
+            )}
           </div>
         </div>
 
