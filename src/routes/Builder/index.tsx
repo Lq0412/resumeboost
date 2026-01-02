@@ -473,7 +473,7 @@ export default function Builder() {
                     <CompactInput value={edu.school} onChange={(v) => updateEducation(edu.id, 'school', v)} placeholder="学校" />
                     <div className="flex gap-1"><CompactInput value={edu.major || ''} onChange={(v) => updateEducation(edu.id, 'major', v)} placeholder="专业" /><CompactInput value={edu.degree || ''} onChange={(v) => updateEducation(edu.id, 'degree', v)} placeholder="学历" /></div>
                     <CompactDateRange startYear={edu.startYear} startMonth={edu.startMonth} endYear={edu.endYear} endMonth={edu.endMonth} onStartChange={(y, m) => { updateEducation(edu.id, 'startYear', y); updateEducation(edu.id, 'startMonth', m); }} onEndChange={(y, m) => { updateEducation(edu.id, 'endYear', y); updateEducation(edu.id, 'endMonth', m); }} />
-                    <textarea value={edu.description || ''} onChange={(e) => updateEducation(edu.id, 'description', e.target.value)} className="w-full px-2 py-1 text-xs border border-gray-200 rounded resize-none" rows={2} placeholder="校园经历" />
+                    <textarea value={edu.description || ''} onChange={(e) => { updateEducation(edu.id, 'description', e.target.value); e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }} onFocus={(e) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }} className="w-full px-2 py-1 text-xs border border-gray-200 rounded resize-none min-h-[32px]" placeholder="校园经历" />
                   </div>
                 ))}
               </div>
