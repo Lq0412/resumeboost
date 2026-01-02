@@ -1,23 +1,48 @@
 import { useNavigate, } from 'react-router-dom';
 import { useBuilderForm } from './useBuilderForm';
 import { formToMarkdown } from './formToMarkdown';
-import { saveSession, mask } from '../../lib';
-import { showToast } from '../../components';
+import { mask } from '../../lib';
+import { showToast, LoadingSkeleton } from '../../components';
+import { api, handleAPIError } from '../../lib/api';
 import { useRef, useState, useEffect } from 'react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 
 type DensityMode = 'normal' | 'compact' | 'tight';
+type EditTab = 'basic' | 'edu' | 'skill' | 'work' | 'project' | 'award';
+
+interface AIIssue {
+  section: string;
+  title: string;
+  why: string;
+  how: string;
+}
+
+interface AIResult {
+  issues: AIIssue[];
+  actions: string[];
+}
 
 export default function Builder() {
   const navigate = useNavigate();
   const photoInputRef = useRef<HTMLInputElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const [densityMode, setDensityMode] = useState<DensityMode>('normal');
-  const [hasDraft, setHasDraft] = useState(() => {
-    // 初始化时检查草稿
-    return !!localStorage.getItem('resumeboost_draft');
-  });
+  const [hasDraft, setHasDraft] = useState(() => !!localStorage.getItem('resumeboost_draft'));
+  
+  // Cursor 风格：Tab 切换 + AI 侧边栏
+  const [activeTab, setActiveTab] = useState<EditTab>('basic');
+  const [showAISidebar, setShowAISidebar] = useState(false);
+  const [jdText, setJdText] = useState('');
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [aiResult, setAiResult] = useState<AIResult | null>(null);
+  
+  // 可拖拽调节宽度
+  const [leftWidth, setLeftWidth] = useState(340);
+  const [rightWidth, setRightWidth] = useState(280);
+  const [isDraggingLeft, setIsDraggingLeft] = useState(false);
+  const [isDraggingRight, setIsDraggingRight] = useState(false);
+  
   const {
     form,
     updateBasicInfo,
@@ -29,7 +54,6 @@ export default function Builder() {
     removeExperience,
     updateExperience,
     updateExperienceBullet,
-    addExperienceBullet,
     addProject,
     removeProject,
     updateProject,
@@ -45,6 +69,80 @@ export default function Builder() {
     updateAward,
     loadForm,
   } = useBuilderForm();
+
+  // 拖拽调节宽度
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isDraggingLeft) {
+        setLeftWidth(Math.max(260, Math.min(450, e.clientX)));
+      }
+      if (isDraggingRight) {
+        setRightWidth(Math.max(220, Math.min(350, window.innerWidth - e.clientX)));
+      }
+    };
+    const handleMouseUp = () => {
+      setIsDraggingLeft(false);
+      setIsDraggingRight(false);
+    };
+    if (isDraggingLeft || isDraggingRight) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+    }
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [isDraggingLeft, isDraggingRight]);
+
+  // AI 分析
+  const handleAnalyze = async () => {
+    const markdown = formToMarkdown(form);
+    if (markdown.trim().length < 50) {
+      showToast('请先填写简历内容', 'error');
+      return;
+    }
+    setIsAnalyzing(true);
+    try {
+      const { masked } = mask(markdown);
+      const result = await api.analyze({
+        resume_text: masked,
+        jd_text: jdText ? mask(jdText).masked : null,
+        lang: 'auto',
+        mask_enabled: true,
+      });
+      const mapSection = (title: string) => {
+        const t = title.toLowerCase();
+        if (t.includes('教育') || t.includes('学历')) return 'education';
+        if (t.includes('技能') || t.includes('技术')) return 'skills';
+        if (t.includes('工作') || t.includes('实习')) return 'experience';
+        if (t.includes('项目')) return 'projects';
+        if (t.includes('奖') || t.includes('荣誉')) return 'awards';
+        return 'general';
+      };
+      setAiResult({
+        issues: (result.issues || []).map((i: { title: string; why: string; how: string }) => ({ ...i, section: mapSection(i.title) })),
+        actions: result.actions || [],
+      });
+      showToast('AI 分析完成', 'success');
+    } catch (error) {
+      handleAPIError(error);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleOpenAI = () => {
+    const markdown = formToMarkdown(form);
+    if (markdown.trim().length < 50) {
+      showToast('请至少填写一些基本信息', 'error');
+      return;
+    }
+    setShowAISidebar(true);
+  };
 
   const handleLoadDraft = () => {
     try {
@@ -274,331 +372,204 @@ export default function Builder() {
   };
 
   const handleSubmit = () => {
-    const markdown = formToMarkdown(form);
-    if (markdown.trim().length < 50) {
-      showToast('请至少填写一些基本信息', 'error');
-      return;
-    }
-    const { map } = mask(markdown);
-    saveSession({ resumeText: markdown, maskingMap: map });
-    showToast('简历已保存，进入优化工作台', 'success');
-    navigate('/app');
+    handleOpenAI();
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* 草稿提示 */}
-      {hasDraft && (
-        <div className="bg-blue-50 border-b border-blue-200 px-4 py-2">
-          <div className="max-w-7xl mx-auto flex items-center justify-between">
-            <span className="text-sm text-blue-700">📝 检测到上次保存的草稿</span>
-            <div className="flex gap-2">
-              <button onClick={handleLoadDraft} className="text-sm text-blue-600 hover:text-blue-800 font-medium">加载草稿</button>
-              <button onClick={() => setHasDraft(false)} className="text-sm text-gray-500 hover:text-gray-700">忽略</button>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      <header className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <h1 className="text-xl font-bold text-gray-900 cursor-pointer hover:text-blue-600" onClick={() => navigate('/')}>
+    <div className="h-screen flex flex-col bg-gray-100">
+      {/* 顶部工具栏 */}
+      <header className="h-11 bg-white border-b border-gray-200 px-4 flex items-center justify-between flex-shrink-0">
+        <div className="flex items-center gap-4">
+          <h1 className="text-base font-bold text-gray-900 cursor-pointer hover:text-blue-600" onClick={() => navigate('/')}>
             ResumeBoost
           </h1>
-          <div className="flex items-center gap-2">
-            <button onClick={() => navigate('/')} className="px-3 py-2 text-gray-600 hover:text-gray-800 text-sm">返回首页</button>
-            <button onClick={handleSaveDraft} className="px-3 py-2 text-gray-600 hover:text-gray-800 border border-gray-300 rounded-lg text-sm">
-              💾 保存草稿
-            </button>
-            <button onClick={handleExportPDF} className="px-3 py-2 text-gray-700 hover:text-gray-900 border border-gray-300 rounded-lg text-sm">
-              📄 导出 PDF
-            </button>
-            <button onClick={handleSubmit} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
-              ✨ AI 优化 →
-            </button>
-          </div>
+          {hasDraft && (
+            <button onClick={handleLoadDraft} className="text-xs text-blue-600 hover:text-blue-800">📝 加载草稿</button>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={handleSaveDraft} className="px-2 py-1 text-xs text-gray-600 hover:bg-gray-100 border border-gray-300 rounded">💾 保存</button>
+          <button onClick={handleExportPDF} className="px-2 py-1 text-xs text-gray-600 hover:bg-gray-100 border border-gray-300 rounded">📄 导出</button>
+          <button onClick={handleSubmit} className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700">✨ AI 优化</button>
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto p-4">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* 左侧：编辑区 */}
-          <div className="space-y-4 order-2 lg:order-1">
-            {/* 基本信息 + 照片 */}
-            <Section title="基本信息">
-              <div className="flex gap-4">
-                <div className="flex-1 grid grid-cols-2 gap-3">
-                  <Input label="姓名" value={form.basicInfo.name || ''} onChange={(v) => updateBasicInfo('name', v)} placeholder="张三" />
-                  <Input label="求职意向" value={form.basicInfo.jobTitle || ''} onChange={(v) => updateBasicInfo('jobTitle', v)} placeholder="Java开发工程师" />
-                  <Input label="手机" value={form.basicInfo.phone} onChange={(v) => updateBasicInfo('phone', v)} placeholder="13800138000" />
-                  <Input label="邮箱" value={form.basicInfo.email} onChange={(v) => updateBasicInfo('email', v)} placeholder="example@email.com" />
-                  <Input label="求职状态" value={form.basicInfo.status || ''} onChange={(v) => updateBasicInfo('status', v)} placeholder="在职/离职/应届" />
-                  <Input label="所在城市" value={form.basicInfo.city || ''} onChange={(v) => updateBasicInfo('city', v)} placeholder="北京" />
-                </div>
-                {/* 照片上传 */}
-                <div className="flex-shrink-0">
-                  <label className="block text-xs text-gray-600 mb-1">照片</label>
-                  <input ref={photoInputRef} type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
-                  <div 
-                    onClick={() => photoInputRef.current?.click()}
-                    className="w-24 h-32 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors overflow-hidden"
-                  >
-                    {form.photo ? (
-                      <img src={form.photo} alt="照片" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="text-center text-gray-400 text-xs">
-                        <div className="text-2xl mb-1">📷</div>
-                        <div>点击上传</div>
-                      </div>
-                    )}
+      {/* 三栏主体 */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* 左侧：编辑区 */}
+        <div className="flex-shrink-0 bg-white border-r border-gray-200 flex flex-col" style={{ width: leftWidth }}>
+          {/* Tab 导航 */}
+          <div className="flex border-b border-gray-200 bg-gray-50">
+            {[
+              { id: 'basic' as EditTab, label: '基本', icon: '👤' },
+              { id: 'edu' as EditTab, label: '教育', icon: '🎓' },
+              { id: 'skill' as EditTab, label: '技能', icon: '💡' },
+              { id: 'work' as EditTab, label: '工作', icon: '💼' },
+              { id: 'project' as EditTab, label: '项目', icon: '🚀' },
+              { id: 'award' as EditTab, label: '奖项', icon: '🏆' },
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex-1 px-1 py-1.5 text-xs transition-colors ${
+                  activeTab === tab.id 
+                    ? 'bg-white text-blue-600 border-b-2 border-blue-600' 
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                {tab.icon}
+              </button>
+            ))}
+          </div>
+
+          {/* 表单内容 */}
+          <div className="flex-1 overflow-y-auto p-3">
+            {/* 基本信息 */}
+            {activeTab === 'basic' && (
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <div className="flex-1 space-y-2">
+                    <CompactInput label="姓名" value={form.basicInfo.name || ''} onChange={(v) => updateBasicInfo('name', v)} placeholder="张三" />
+                    <CompactInput label="求职意向" value={form.basicInfo.jobTitle || ''} onChange={(v) => updateBasicInfo('jobTitle', v)} placeholder="Java开发" />
+                    <CompactInput label="手机" value={form.basicInfo.phone} onChange={(v) => updateBasicInfo('phone', v)} placeholder="138xxxx" />
+                    <CompactInput label="邮箱" value={form.basicInfo.email} onChange={(v) => updateBasicInfo('email', v)} placeholder="email" />
+                    <CompactInput label="状态" value={form.basicInfo.status || ''} onChange={(v) => updateBasicInfo('status', v)} placeholder="在职/应届" />
+                    <CompactInput label="城市" value={form.basicInfo.city || ''} onChange={(v) => updateBasicInfo('city', v)} placeholder="北京" />
                   </div>
-                  {form.photo && (
-                    <button onClick={() => setPhoto('')} className="text-xs text-red-500 hover:text-red-700 mt-1 w-full text-center">删除照片</button>
-                  )}
-                </div>
-              </div>
-              {/* 更多信息（可选） */}
-              <details className="mt-3">
-                <summary className="text-xs text-blue-600 cursor-pointer hover:text-blue-800">+ 更多信息（GitHub、个人网站等）</summary>
-                <div className="grid grid-cols-2 gap-3 mt-3 pt-3 border-t border-gray-100">
-                  <Input label="GitHub" value={form.basicInfo.github || ''} onChange={(v) => updateBasicInfo('github', v)} placeholder="github.com/username" />
-                  <Input label="个人网站/博客" value={form.basicInfo.website || ''} onChange={(v) => updateBasicInfo('website', v)} placeholder="yoursite.com" />
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">出生年月</label>
-                    <div className="flex gap-2">
-                      <select 
-                        value={form.basicInfo.birthYear || ''} 
-                        onChange={(e) => updateBasicInfo('birthYear', e.target.value)}
-                        className="flex-1 px-2 py-2 border border-gray-300 rounded-md text-sm"
-                      >
-                        <option value="">年</option>
-                        {Array.from({ length: 40 }, (_, i) => String(new Date().getFullYear() - 18 - i)).map(y => (
-                          <option key={y} value={y}>{y}</option>
-                        ))}
-                      </select>
-                      <select 
-                        value={form.basicInfo.birthMonth || ''} 
-                        onChange={(e) => updateBasicInfo('birthMonth', e.target.value)}
-                        className="flex-1 px-2 py-2 border border-gray-300 rounded-md text-sm"
-                      >
-                        <option value="">月</option>
-                        {['01','02','03','04','05','06','07','08','09','10','11','12'].map(m => (
-                          <option key={m} value={m}>{parseInt(m)}月</option>
-                        ))}
-                      </select>
+                  <div className="flex-shrink-0">
+                    <input ref={photoInputRef} type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
+                    <div onClick={() => photoInputRef.current?.click()} className="w-14 h-18 border border-dashed border-gray-300 rounded flex items-center justify-center cursor-pointer hover:border-blue-400 overflow-hidden">
+                      {form.photo ? <img src={form.photo} alt="" className="w-full h-full object-cover" /> : <span className="text-gray-400 text-xs">📷</span>}
                     </div>
+                    {form.photo && <button onClick={() => setPhoto('')} className="text-xs text-red-500 w-full text-center mt-1">删除</button>}
                   </div>
-                  <Input label="籍贯" value={form.basicInfo.hometown || ''} onChange={(v) => updateBasicInfo('hometown', v)} placeholder="广东广州" />
                 </div>
-              </details>
-            </Section>
+                <details className="text-xs">
+                  <summary className="text-blue-600 cursor-pointer hover:text-blue-800">+ 更多</summary>
+                  <div className="mt-2 space-y-2 pt-2 border-t border-gray-100">
+                    <CompactInput label="GitHub" value={form.basicInfo.github || ''} onChange={(v) => updateBasicInfo('github', v)} placeholder="github.com/xxx" />
+                    <CompactInput label="网站" value={form.basicInfo.website || ''} onChange={(v) => updateBasicInfo('website', v)} placeholder="yoursite.com" />
+                    <CompactInput label="籍贯" value={form.basicInfo.hometown || ''} onChange={(v) => updateBasicInfo('hometown', v)} placeholder="广东" />
+                  </div>
+                </details>
+              </div>
+            )}
 
             {/* 教育经历 */}
-            <Section title="教育经历" onAdd={addEducation} addText="+ 添加">
-              {form.education.map((edu, idx) => (
-                <div key={edu.id} className="border border-gray-200 rounded-lg p-3 mb-3 bg-gray-50">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-xs text-gray-500">教育 {idx + 1}</span>
-                    {form.education.length > 1 && (
-                      <button onClick={() => removeEducation(edu.id)} className="text-xs text-red-500 hover:text-red-700">删除</button>
-                    )}
+            {activeTab === 'edu' && (
+              <div className="space-y-2">
+                <div className="flex justify-between items-center"><span className="text-xs font-medium text-gray-700">教育经历</span><button onClick={addEducation} className="text-xs text-blue-600">+ 添加</button></div>
+                {form.education.map((edu, idx) => (
+                  <div key={edu.id} className="p-2 bg-gray-50 rounded border border-gray-200 space-y-1.5">
+                    <div className="flex justify-between"><span className="text-xs text-gray-400">#{idx + 1}</span>{form.education.length > 1 && <button onClick={() => removeEducation(edu.id)} className="text-xs text-red-500">删除</button>}</div>
+                    <CompactInput value={edu.school} onChange={(v) => updateEducation(edu.id, 'school', v)} placeholder="学校" />
+                    <div className="flex gap-1"><CompactInput value={edu.major || ''} onChange={(v) => updateEducation(edu.id, 'major', v)} placeholder="专业" /><CompactInput value={edu.degree || ''} onChange={(v) => updateEducation(edu.id, 'degree', v)} placeholder="学历" /></div>
+                    <CompactDateRange startYear={edu.startYear} startMonth={edu.startMonth} endYear={edu.endYear} endMonth={edu.endMonth} onStartChange={(y, m) => { updateEducation(edu.id, 'startYear', y); updateEducation(edu.id, 'startMonth', m); }} onEndChange={(y, m) => { updateEducation(edu.id, 'endYear', y); updateEducation(edu.id, 'endMonth', m); }} />
+                    <textarea value={edu.description || ''} onChange={(e) => updateEducation(edu.id, 'description', e.target.value)} className="w-full px-2 py-1 text-xs border border-gray-200 rounded resize-none" rows={2} placeholder="校园经历" />
                   </div>
-                  <div className="grid grid-cols-2 gap-2 mb-2">
-                    <Input value={edu.school} onChange={(v) => updateEducation(edu.id, 'school', v)} placeholder="学校名称" small />
-                    <Input value={edu.major || ''} onChange={(v) => updateEducation(edu.id, 'major', v)} placeholder="专业" small />
-                    <Input value={edu.degree || ''} onChange={(v) => updateEducation(edu.id, 'degree', v)} placeholder="学历（本科/硕士）" small />
-                  </div>
-                  <div className="mt-2">
-                    <label className="block text-xs text-gray-500 mb-1">在校时间</label>
-                    <DateRangePicker
-                      startYear={edu.startYear}
-                      startMonth={edu.startMonth}
-                      endYear={edu.endYear}
-                      endMonth={edu.endMonth}
-                      onStartChange={(y, m) => { updateEducation(edu.id, 'startYear', y); updateEducation(edu.id, 'startMonth', m); }}
-                      onEndChange={(y, m) => { updateEducation(edu.id, 'endYear', y); updateEducation(edu.id, 'endMonth', m); }}
-                    />
-                  </div>
-                  <div className="mt-2">
-                    <label className="block text-xs text-gray-500 mb-1">校园经历（可选）</label>
-                    <textarea
-                      value={edu.description || ''}
-                      onChange={(e) => updateEducation(edu.id, 'description', e.target.value)}
-                      className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded focus:ring-1 focus:ring-blue-500"
-                      rows={2}
-                      placeholder="社团活动、学生会、竞赛经历等..."
-                    />
-                  </div>
-                </div>
-              ))}
-            </Section>
+                ))}
+              </div>
+            )}
 
             {/* 专业技能 */}
-            <Section title="专业技能" onAdd={addSkillCategory} addText="+ 添加技能类别">
-              {form.skillCategories && form.skillCategories.map((cat, idx) => (
-                <div key={cat.id} className="border border-gray-200 rounded-lg p-3 mb-3 bg-gray-50">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-xs text-gray-500">技能类别 {idx + 1}</span>
-                    {form.skillCategories!.length > 1 && (
-                      <button onClick={() => removeSkillCategory(cat.id)} className="text-xs text-red-500 hover:text-red-700">删除</button>
-                    )}
+            {activeTab === 'skill' && (
+              <div className="space-y-2">
+                <div className="flex justify-between items-center"><span className="text-xs font-medium text-gray-700">专业技能</span><button onClick={addSkillCategory} className="text-xs text-blue-600">+ 添加</button></div>
+                {form.skillCategories?.map((cat, idx) => (
+                  <div key={cat.id} className="p-2 bg-gray-50 rounded border border-gray-200 space-y-1.5">
+                    <div className="flex justify-between"><span className="text-xs text-gray-400">#{idx + 1}</span>{form.skillCategories!.length > 1 && <button onClick={() => removeSkillCategory(cat.id)} className="text-xs text-red-500">删除</button>}</div>
+                    <CompactInput value={cat.name} onChange={(v) => updateSkillCategory(cat.id, 'name', v)} placeholder="技能名称" />
+                    <textarea value={cat.description} onChange={(e) => updateSkillCategory(cat.id, 'description', e.target.value)} className="w-full px-2 py-1 text-xs border border-gray-200 rounded resize-none" rows={2} placeholder="描述" />
                   </div>
-                  <Input value={cat.name} onChange={(v) => updateSkillCategory(cat.id, 'name', v)} placeholder="类别名称（如：Java、数据库）" small />
-                  <textarea
-                    value={cat.description}
-                    onChange={(e) => updateSkillCategory(cat.id, 'description', e.target.value)}
-                    className="w-full mt-2 px-2 py-1.5 text-sm border border-gray-200 rounded focus:ring-1 focus:ring-blue-500"
-                    rows={2}
-                    placeholder="技能描述..."
-                  />
-                </div>
-              ))}
-              {(!form.skillCategories || form.skillCategories.length === 0) && (
-                <textarea
-                  value={form.skills}
-                  onChange={(e) => updateSkills(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                  rows={3}
-                  placeholder="或直接输入技能列表：JavaScript, React, Node.js..."
-                />
-              )}
-            </Section>
+                ))}
+                {(!form.skillCategories || form.skillCategories.length === 0) && <textarea value={form.skills} onChange={(e) => updateSkills(e.target.value)} className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded" rows={4} placeholder="技能列表..." />}
+              </div>
+            )}
 
             {/* 工作经历 */}
-            <Section title="工作经历" onAdd={addExperience} addText="+ 添加" optional>
-              {form.experience.map((exp, idx) => (
-                <div key={exp.id} className="border border-gray-200 rounded-lg p-3 mb-3 bg-gray-50">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-xs text-gray-500">工作 {idx + 1}</span>
-                    <button onClick={() => removeExperience(exp.id)} className="text-xs text-red-500 hover:text-red-700">删除</button>
+            {activeTab === 'work' && (
+              <div className="space-y-2">
+                <div className="flex justify-between items-center"><span className="text-xs font-medium text-gray-700">工作经历</span><button onClick={addExperience} className="text-xs text-blue-600">+ 添加</button></div>
+                {form.experience.length === 0 && <p className="text-xs text-gray-400 py-4 text-center">暂无</p>}
+                {form.experience.map((exp, idx) => (
+                  <div key={exp.id} className="p-2 bg-gray-50 rounded border border-gray-200 space-y-1.5">
+                    <div className="flex justify-between"><span className="text-xs text-gray-400">#{idx + 1}</span><button onClick={() => removeExperience(exp.id)} className="text-xs text-red-500">删除</button></div>
+                    <div className="flex gap-1"><CompactInput value={exp.company} onChange={(v) => updateExperience(exp.id, 'company', v)} placeholder="公司" /><CompactInput value={exp.position} onChange={(v) => updateExperience(exp.id, 'position', v)} placeholder="职位" /></div>
+                    <CompactInput value={exp.location || ''} onChange={(v) => updateExperience(exp.id, 'location', v)} placeholder="地点" />
+                    <CompactDateRange startYear={exp.startYear} startMonth={exp.startMonth} endYear={exp.endYear} endMonth={exp.endMonth} onStartChange={(y, m) => { updateExperience(exp.id, 'startYear', y); updateExperience(exp.id, 'startMonth', m); }} onEndChange={(y, m) => { updateExperience(exp.id, 'endYear', y); updateExperience(exp.id, 'endMonth', m); }} showPresent />
+                    <textarea value={exp.bullets.join('\n')} onChange={(e) => { const lines = e.target.value.split('\n'); lines.forEach((line, i) => { if (i < exp.bullets.length) updateExperienceBullet(exp.id, i, line); }); }} className="w-full px-2 py-1 text-xs border border-gray-200 rounded resize-none" rows={3} placeholder="工作内容" />
                   </div>
-                  <div className="grid grid-cols-2 gap-2 mb-2">
-                    <Input value={exp.company} onChange={(v) => updateExperience(exp.id, 'company', v)} placeholder="公司名称" small />
-                    <Input value={exp.position} onChange={(v) => updateExperience(exp.id, 'position', v)} placeholder="职位" small />
-                    <Input value={exp.location || ''} onChange={(v) => updateExperience(exp.id, 'location', v)} placeholder="工作地点" small />
-                  </div>
-                  <div className="mb-2">
-                    <label className="block text-xs text-gray-500 mb-1">工作时间</label>
-                    <DateRangePicker
-                      startYear={exp.startYear}
-                      startMonth={exp.startMonth}
-                      endYear={exp.endYear}
-                      endMonth={exp.endMonth}
-                      onStartChange={(y, m) => { updateExperience(exp.id, 'startYear', y); updateExperience(exp.id, 'startMonth', m); }}
-                      onEndChange={(y, m) => { updateExperience(exp.id, 'endYear', y); updateExperience(exp.id, 'endMonth', m); }}
-                      showPresent
-                    />
-                  </div>
-                  <textarea
-                    value={exp.bullets.join('\n')}
-                    onChange={(e) => {
-                      const lines = e.target.value.split('\n');
-                      lines.forEach((line, i) => {
-                        if (i < exp.bullets.length) {
-                          updateExperienceBullet(exp.id, i, line);
-                        } else if (line.trim() && exp.bullets.length < 5) {
-                          addExperienceBullet(exp.id);
-                          setTimeout(() => updateExperienceBullet(exp.id, i, line), 0);
-                        }
-                      });
-                    }}
-                    className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded focus:ring-1 focus:ring-blue-500"
-                    rows={3}
-                    placeholder="工作内容描述..."
-                  />
-                </div>
-              ))}
-            </Section>
+                ))}
+              </div>
+            )}
 
             {/* 项目经历 */}
-            <Section title="项目经历" onAdd={addProject} addText="+ 添加" optional>
-              {form.projects.map((proj, idx) => (
-                <div key={proj.id} className="border border-gray-200 rounded-lg p-3 mb-3 bg-gray-50">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-xs text-gray-500">项目 {idx + 1}</span>
-                    <button onClick={() => removeProject(proj.id)} className="text-xs text-red-500 hover:text-red-700">删除</button>
+            {activeTab === 'project' && (
+              <div className="space-y-2">
+                <div className="flex justify-between items-center"><span className="text-xs font-medium text-gray-700">项目经历</span><button onClick={addProject} className="text-xs text-blue-600">+ 添加</button></div>
+                {form.projects.length === 0 && <p className="text-xs text-gray-400 py-4 text-center">暂无</p>}
+                {form.projects.map((proj, idx) => (
+                  <div key={proj.id} className="p-2 bg-gray-50 rounded border border-gray-200 space-y-1.5">
+                    <div className="flex justify-between"><span className="text-xs text-gray-400">#{idx + 1}</span><button onClick={() => removeProject(proj.id)} className="text-xs text-red-500">删除</button></div>
+                    <div className="flex gap-1"><CompactInput value={proj.name} onChange={(v) => updateProject(proj.id, 'name', v)} placeholder="项目名" /><CompactInput value={proj.role || ''} onChange={(v) => updateProject(proj.id, 'role', v)} placeholder="角色" /></div>
+                    <CompactInput value={proj.link || ''} onChange={(v) => updateProject(proj.id, 'link', v)} placeholder="链接" />
+                    <CompactDateRange startYear={proj.startYear} startMonth={proj.startMonth} endYear={proj.endYear} endMonth={proj.endMonth} onStartChange={(y, m) => { updateProject(proj.id, 'startYear', y); updateProject(proj.id, 'startMonth', m); }} onEndChange={(y, m) => { updateProject(proj.id, 'endYear', y); updateProject(proj.id, 'endMonth', m); }} />
+                    {proj.bullets.map((b, bi) => (<div key={bi} className="flex gap-1"><input value={b} onChange={(e) => updateProjectBullet(proj.id, bi, e.target.value)} className="flex-1 px-2 py-1 text-xs border border-gray-200 rounded" placeholder="描述" />{proj.bullets.length > 1 && <button onClick={() => removeProjectBullet(proj.id, bi)} className="text-red-400 text-xs">×</button>}</div>))}
+                    {proj.bullets.length < 5 && <button onClick={() => addProjectBullet(proj.id)} className="text-xs text-blue-600">+ 描述</button>}
                   </div>
-                  <div className="grid grid-cols-2 gap-2 mb-2">
-                    <Input value={proj.name} onChange={(v) => updateProject(proj.id, 'name', v)} placeholder="项目名称" small />
-                    <Input value={proj.role || ''} onChange={(v) => updateProject(proj.id, 'role', v)} placeholder="角色/职位" small />
-                    <div className="col-span-2">
-                      <Input value={proj.link || ''} onChange={(v) => updateProject(proj.id, 'link', v)} placeholder="项目链接（GitHub/演示地址）" small />
-                    </div>
-                  </div>
-                  <div className="mb-2">
-                    <label className="block text-xs text-gray-500 mb-1">项目时间</label>
-                    <DateRangePicker
-                      startYear={proj.startYear}
-                      startMonth={proj.startMonth}
-                      endYear={proj.endYear}
-                      endMonth={proj.endMonth}
-                      onStartChange={(y, m) => { updateProject(proj.id, 'startYear', y); updateProject(proj.id, 'startMonth', m); }}
-                      onEndChange={(y, m) => { updateProject(proj.id, 'endYear', y); updateProject(proj.id, 'endMonth', m); }}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">项目描述</label>
-                    <div className="space-y-1">
-                      {proj.bullets.map((bullet, bIdx) => (
-                        <div key={bIdx} className="flex gap-1 items-start">
-                          <span className="text-gray-400 mt-1.5 text-sm">•</span>
-                          <input
-                            type="text"
-                            value={bullet}
-                            onChange={(e) => updateProjectBullet(proj.id, bIdx, e.target.value)}
-                            className="flex-1 px-2 py-1 text-sm border border-gray-200 rounded focus:ring-1 focus:ring-blue-500"
-                            placeholder="描述项目内容、技术栈、成果..."
-                          />
-                          {proj.bullets.length > 1 && (
-                            <button onClick={() => removeProjectBullet(proj.id, bIdx)} className="text-gray-400 hover:text-red-500 px-1">×</button>
-                          )}
-                        </div>
-                      ))}
-                      {proj.bullets.length < 5 && (
-                        <button onClick={() => addProjectBullet(proj.id)} className="text-xs text-blue-600 hover:text-blue-800 ml-4">+ 添加描述</button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </Section>
+                ))}
+              </div>
+            )}
 
             {/* 荣誉奖项 */}
-            <Section title="荣誉奖项" onAdd={addAward} addText="+ 添加" optional>
-              {form.awards && form.awards.map((award) => (
-                <div key={award.id} className="flex gap-2 mb-2">
-                  <Input value={award.name} onChange={(v) => updateAward(award.id, 'name', v)} placeholder="奖项名称" small />
-                  <Input value={award.time || ''} onChange={(v) => updateAward(award.id, 'time', v)} placeholder="时间" small />
-                  <button onClick={() => removeAward(award.id)} className="text-gray-400 hover:text-red-500 px-2">×</button>
-                </div>
-              ))}
-            </Section>
-          </div>
-
-          {/* 右侧：实时预览 */}
-          <div className="order-1 lg:order-2 lg:sticky lg:top-20 lg:h-[calc(100vh-6rem)]">
-            <div className="bg-gray-700 rounded-lg shadow-lg h-full overflow-hidden flex flex-col">
-              <div className="px-4 py-2 bg-gray-800 border-b border-gray-600 flex items-center justify-between flex-shrink-0">
-                <span className="text-sm font-medium text-gray-200">📄 简历预览</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-400">密度:</span>
-                  <select 
-                    value={densityMode} 
-                    onChange={(e) => setDensityMode(e.target.value as DensityMode)}
-                    className="text-xs bg-gray-700 text-gray-200 border border-gray-600 rounded px-2 py-1"
-                  >
-                    <option value="normal">标准</option>
-                    <option value="compact">紧凑</option>
-                    <option value="tight">极简</option>
-                  </select>
-                </div>
+            {activeTab === 'award' && (
+              <div className="space-y-2">
+                <div className="flex justify-between items-center"><span className="text-xs font-medium text-gray-700">荣誉奖项</span><button onClick={addAward} className="text-xs text-blue-600">+ 添加</button></div>
+                {(!form.awards || form.awards.length === 0) && <p className="text-xs text-gray-400 py-4 text-center">暂无</p>}
+                {form.awards?.map((a) => (<div key={a.id} className="flex gap-1 items-center"><CompactInput value={a.name} onChange={(v) => updateAward(a.id, 'name', v)} placeholder="奖项" /><input value={a.time || ''} onChange={(e) => updateAward(a.id, 'time', e.target.value)} className="w-16 px-2 py-1 text-xs border border-gray-200 rounded" placeholder="时间" /><button onClick={() => removeAward(a.id)} className="text-red-400 text-xs">×</button></div>))}
               </div>
-              <div className="flex-1 overflow-auto p-4 flex justify-center">
-                <ResumePreview form={form} densityMode={densityMode} previewRef={previewRef} />
-              </div>
-            </div>
+            )}
           </div>
         </div>
+
+        {/* 拖拽条 */}
+        <div className="w-1 bg-gray-200 hover:bg-blue-400 cursor-col-resize flex-shrink-0" onMouseDown={() => setIsDraggingLeft(true)} />
+
+        {/* 中间：预览区 */}
+        <div className="flex-1 min-w-0 bg-gray-500 flex flex-col overflow-hidden">
+          <div className="h-8 bg-gray-600 px-3 flex items-center justify-between flex-shrink-0">
+            <span className="text-xs text-gray-200">📄 预览</span>
+            <select value={densityMode} onChange={(e) => setDensityMode(e.target.value as DensityMode)} className="text-xs bg-gray-500 text-gray-200 border border-gray-400 rounded px-1 py-0.5">
+              <option value="normal">标准</option><option value="compact">紧凑</option><option value="tight">极简</option>
+            </select>
+          </div>
+          <div className="flex-1 overflow-auto p-2 flex justify-center items-start">
+            <ResumePreview form={form} densityMode={densityMode} previewRef={previewRef} />
+          </div>
+        </div>
+
+        {/* AI 侧边栏 */}
+        {showAISidebar && <div className="w-1 bg-gray-200 hover:bg-blue-400 cursor-col-resize flex-shrink-0" onMouseDown={() => setIsDraggingRight(true)} />}
+        {showAISidebar && (
+          <div className="flex-shrink-0 bg-white border-l border-gray-200 flex flex-col" style={{ width: rightWidth }}>
+            <div className="h-8 bg-gray-50 px-3 flex items-center justify-between border-b border-gray-200 flex-shrink-0">
+              <span className="text-xs font-medium text-gray-700">✨ AI</span>
+              <button onClick={() => setShowAISidebar(false)} className="text-gray-400 hover:text-gray-600">×</button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-2">
+              <textarea value={jdText} onChange={(e) => setJdText(e.target.value)} className="w-full h-14 px-2 py-1 text-xs border border-gray-200 rounded resize-none mb-2" placeholder="JD（可选）" />
+              <button onClick={handleAnalyze} disabled={isAnalyzing} className="w-full py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400 mb-2">{isAnalyzing ? '分析中...' : '🚀 分析'}</button>
+              {isAnalyzing && <LoadingSkeleton lines={3} />}
+              {!isAnalyzing && !aiResult && <div className="text-center py-4 text-gray-400"><div className="text-xl mb-1">🤖</div><p className="text-xs">点击分析</p></div>}
+              {!isAnalyzing && aiResult && (
+                <div className="space-y-2">
+                  {aiResult.issues.length > 0 ? aiResult.issues.map((issue, i) => (<div key={i} className="p-2 bg-amber-50 border border-amber-200 rounded text-xs"><p className="font-medium text-amber-800">{issue.title}</p><p className="text-amber-700">{issue.why}</p><p className="text-gray-600">💡 {issue.how}</p></div>)) : <div className="p-2 bg-green-50 border border-green-200 rounded text-xs text-center text-green-700">✓ 良好</div>}
+                  {aiResult.actions.length > 0 && <div className="pt-2 border-t border-gray-200"><p className="text-xs font-medium text-gray-600 mb-1">建议</p>{aiResult.actions.map((a, i) => <p key={i} className="text-xs text-gray-500">✓ {a}</p>)}</div>}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -867,101 +838,62 @@ function ResumePreview({ form, densityMode = 'normal', previewRef }: {
   );
 }
 
-// 年月选择器组件
-function DateRangePicker({
-  startYear, startMonth, endYear, endMonth,
-  onStartChange, onEndChange, showPresent
-}: {
-  startYear?: string; startMonth?: string; endYear?: string; endMonth?: string;
-  onStartChange: (year: string, month: string) => void;
-  onEndChange: (year: string, month: string) => void;
-  showPresent?: boolean;
-}) {
-  const currentYear = new Date().getFullYear();
-  // 包含未来5年（支持在读学生）和过去25年
-  const futureYears = Array.from({ length: 5 }, (_, i) => String(currentYear + 5 - i));
-  const pastYears = Array.from({ length: 25 }, (_, i) => String(currentYear - i));
-  const allYears = [...futureYears, ...pastYears];
-  const months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
 
-  const selectClass = "flex-1 px-2 py-1.5 border border-gray-300 rounded-md text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer";
 
-  return (
-    <div className="flex items-center gap-2">
-      <div className="flex gap-1 flex-1">
-        <select 
-          value={startYear || ''} 
-          onChange={(e) => onStartChange(e.target.value, startMonth || '')} 
-          className={selectClass}
-        >
-          <option value="">开始年</option>
-          {allYears.map(y => <option key={y} value={y}>{y}年</option>)}
-        </select>
-        <select 
-          value={startMonth || ''} 
-          onChange={(e) => onStartChange(startYear || '', e.target.value)} 
-          className={selectClass}
-        >
-          <option value="">月</option>
-          {months.map(m => <option key={m} value={m}>{parseInt(m)}月</option>)}
-        </select>
-      </div>
-      <span className="text-gray-400 text-sm">至</span>
-      <div className="flex gap-1 flex-1">
-        <select 
-          value={endYear || ''} 
-          onChange={(e) => onEndChange(e.target.value, e.target.value === 'present' ? '' : (endMonth || ''))} 
-          className={selectClass}
-        >
-          <option value="">结束年</option>
-          {showPresent && <option value="present">至今</option>}
-          {allYears.map(y => <option key={y} value={y}>{y}年</option>)}
-        </select>
-        {endYear !== 'present' && (
-          <select 
-            value={endMonth || ''} 
-            onChange={(e) => onEndChange(endYear || '', e.target.value)} 
-            className={selectClass}
-          >
-            <option value="">月</option>
-            {months.map(m => <option key={m} value={m}>{parseInt(m)}月</option>)}
-          </select>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// 通用组件
-function Section({ title, children, onAdd, addText, optional }: { 
-  title: string; children: React.ReactNode; onAdd?: () => void; addText?: string; optional?: boolean;
+// 紧凑输入框
+function CompactInput({ label, value, onChange, placeholder }: { 
+  label?: string; value: string; onChange: (v: string) => void; placeholder?: string;
 }) {
   return (
-    <div className="bg-white rounded-lg shadow p-4">
-      <div className="flex justify-between items-center mb-3">
-        <h2 className="font-semibold text-gray-900">
-          {title}{optional && <span className="text-xs text-gray-400 font-normal ml-1">（可选）</span>}
-        </h2>
-        {onAdd && <button onClick={onAdd} className="text-sm text-blue-600 hover:text-blue-800">{addText || '+ 添加'}</button>}
-      </div>
-      {children}
-    </div>
-  );
-}
-
-function Input({ label, value, onChange, placeholder, small }: { 
-  label?: string; value: string; onChange: (v: string) => void; placeholder?: string; small?: boolean;
-}) {
-  return (
-    <div>
-      {label && <label className="block text-xs text-gray-600 mb-1">{label}</label>}
+    <div className="flex-1">
+      {label && <label className="block text-xs text-gray-500 mb-0.5">{label}</label>}
       <input
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className={`w-full px-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent ${small ? 'py-1.5 text-sm' : 'py-2'}`}
+        className="w-full px-2 py-1 text-xs border border-gray-200 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
         placeholder={placeholder}
       />
     </div>
   );
 }
+
+// 紧凑日期范围选择器
+function CompactDateRange({ startYear, startMonth, endYear, endMonth, onStartChange, onEndChange, showPresent }: {
+  startYear?: string; startMonth?: string; endYear?: string; endMonth?: string;
+  onStartChange: (y: string, m: string) => void;
+  onEndChange: (y: string, m: string) => void;
+  showPresent?: boolean;
+}) {
+  const currentYear = new Date().getFullYear();
+  const years = [...Array.from({ length: 5 }, (_, i) => String(currentYear + 5 - i)), ...Array.from({ length: 25 }, (_, i) => String(currentYear - i))];
+  const months = ['01','02','03','04','05','06','07','08','09','10','11','12'];
+  const sel = "px-1 py-1 text-xs border border-gray-200 rounded bg-white focus:ring-1 focus:ring-blue-500";
+  
+  return (
+    <div className="flex items-center gap-1 text-xs">
+      <select value={startYear || ''} onChange={(e) => onStartChange(e.target.value, startMonth || '')} className={`${sel} w-16`}>
+        <option value="">年</option>
+        {years.map(y => <option key={y} value={y}>{y}</option>)}
+      </select>
+      <select value={startMonth || ''} onChange={(e) => onStartChange(startYear || '', e.target.value)} className={`${sel} w-12`}>
+        <option value="">月</option>
+        {months.map(m => <option key={m} value={m}>{parseInt(m)}</option>)}
+      </select>
+      <span className="text-gray-400">~</span>
+      <select value={endYear || ''} onChange={(e) => onEndChange(e.target.value, e.target.value === 'present' ? '' : (endMonth || ''))} className={`${sel} w-16`}>
+        <option value="">年</option>
+        {showPresent && <option value="present">至今</option>}
+        {years.map(y => <option key={y} value={y}>{y}</option>)}
+      </select>
+      {endYear !== 'present' && (
+        <select value={endMonth || ''} onChange={(e) => onEndChange(endYear || '', e.target.value)} className={`${sel} w-12`}>
+          <option value="">月</option>
+          {months.map(m => <option key={m} value={m}>{parseInt(m)}</option>)}
+        </select>
+      )}
+    </div>
+  );
+}
+
+

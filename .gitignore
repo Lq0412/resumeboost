@@ -28,4 +28,5 @@ dist-ssr
 *.sln
 *.sw?
 
-C:\Users\Lq304\Desktop\resumeboost\.kiro
+# Kiro
+.kiro
