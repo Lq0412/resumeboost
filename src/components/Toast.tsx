@@ -9,31 +9,35 @@ interface ToastProps {
   onClose: () => void;
 }
 
-export function Toast({ message, type = 'info', duration = 3000, onClose }: ToastProps) {
+const toastConfig = {
+  success: { bg: 'bg-green-600', icon: '✓' },
+  error: { bg: 'bg-red-600', icon: '✕' },
+  warning: { bg: 'bg-amber-500', icon: '⚠' },
+  info: { bg: 'bg-blue-600', icon: 'ℹ' },
+};
+
+export function Toast({ message, type = 'info', duration = 2500, onClose }: ToastProps) {
   const [isVisible, setIsVisible] = useState(true);
+  const config = toastConfig[type];
 
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsVisible(false);
-      setTimeout(onClose, 300);
+      setTimeout(onClose, 200);
     }, duration);
     return () => clearTimeout(timer);
   }, [duration, onClose]);
 
-  const bgColor = {
-    success: 'bg-green-500',
-    error: 'bg-red-500',
-    warning: 'bg-yellow-500',
-    info: 'bg-blue-500',
-  }[type];
-
   return (
     <div
-      className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg text-white shadow-lg transition-all duration-300 ${bgColor} ${
+      className={`px-4 py-2.5 rounded-lg text-white shadow-lg transition-all duration-200 ${config.bg} ${
         isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'
       }`}
     >
-      {message}
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-medium">{config.icon}</span>
+        <span className="text-sm">{message}</span>
+      </div>
     </div>
   );
 }
@@ -56,8 +60,10 @@ export function ToastContainer() {
     return () => { setToastsExternal = null; };
   }, []);
 
+  if (toasts.length === 0) return null;
+
   return (
-    <div className="fixed top-4 right-4 z-50 space-y-2">
+    <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[9999] flex flex-col items-center gap-2">
       {toasts.map((toast) => (
         <Toast
           key={toast.id}
