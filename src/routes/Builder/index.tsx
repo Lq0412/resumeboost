@@ -487,10 +487,10 @@ export default function Builder() {
                   <div key={cat.id} className="p-2 bg-gray-50 rounded border border-gray-200 space-y-1.5">
                     <div className="flex justify-between"><span className="text-xs text-gray-400">#{idx + 1}</span>{form.skillCategories!.length > 1 && <button onClick={() => removeSkillCategory(cat.id)} className="text-xs text-red-500">删除</button>}</div>
                     <CompactInput value={cat.name} onChange={(v) => updateSkillCategory(cat.id, 'name', v)} placeholder="技能名称" />
-                    <textarea value={cat.description} onChange={(e) => updateSkillCategory(cat.id, 'description', e.target.value)} className="w-full px-2 py-1 text-xs border border-gray-200 rounded resize-none" rows={2} placeholder="描述" />
+                    <textarea value={cat.description} onChange={(e) => { updateSkillCategory(cat.id, 'description', e.target.value); e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }} onFocus={(e) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }} className="w-full px-2 py-1 text-xs border border-gray-200 rounded resize-none min-h-[32px]" placeholder="描述" />
                   </div>
                 ))}
-                {(!form.skillCategories || form.skillCategories.length === 0) && <textarea value={form.skills} onChange={(e) => updateSkills(e.target.value)} className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded" rows={4} placeholder="技能列表..." />}
+                {(!form.skillCategories || form.skillCategories.length === 0) && <textarea value={form.skills} onChange={(e) => { updateSkills(e.target.value); e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }} onFocus={(e) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }} className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded resize-none min-h-[60px]" placeholder="技能列表..." />}
               </div>
             )}
 
@@ -505,7 +505,7 @@ export default function Builder() {
                     <div className="flex gap-1"><CompactInput value={exp.company} onChange={(v) => updateExperience(exp.id, 'company', v)} placeholder="公司" /><CompactInput value={exp.position} onChange={(v) => updateExperience(exp.id, 'position', v)} placeholder="职位" /></div>
                     <CompactInput value={exp.location || ''} onChange={(v) => updateExperience(exp.id, 'location', v)} placeholder="地点" />
                     <CompactDateRange startYear={exp.startYear} startMonth={exp.startMonth} endYear={exp.endYear} endMonth={exp.endMonth} onStartChange={(y, m) => { updateExperience(exp.id, 'startYear', y); updateExperience(exp.id, 'startMonth', m); }} onEndChange={(y, m) => { updateExperience(exp.id, 'endYear', y); updateExperience(exp.id, 'endMonth', m); }} showPresent />
-                    <textarea value={exp.bullets.join('\n')} onChange={(e) => { const lines = e.target.value.split('\n'); lines.forEach((line, i) => { if (i < exp.bullets.length) updateExperienceBullet(exp.id, i, line); }); }} className="w-full px-2 py-1 text-xs border border-gray-200 rounded resize-none" rows={3} placeholder="工作内容" />
+                    <textarea value={exp.bullets.join('\n')} onChange={(e) => { const lines = e.target.value.split('\n'); lines.forEach((line, i) => { if (i < exp.bullets.length) updateExperienceBullet(exp.id, i, line); }); e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }} onFocus={(e) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }} className="w-full px-2 py-1 text-xs border border-gray-200 rounded resize-none min-h-[48px]" placeholder="工作内容" />
                   </div>
                 ))}
               </div>
@@ -565,7 +565,7 @@ export default function Builder() {
               <button onClick={() => setShowAISidebar(false)} className="text-gray-400 hover:text-gray-600">×</button>
             </div>
             <div className="flex-1 overflow-y-auto p-2">
-              <textarea value={jdText} onChange={(e) => setJdText(e.target.value)} className="w-full h-14 px-2 py-1 text-xs border border-gray-200 rounded resize-none mb-2" placeholder="JD（可选）" />
+              <textarea value={jdText} onChange={(e) => { setJdText(e.target.value); e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'; }} onFocus={(e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'; }} className="w-full px-2 py-1 text-xs border border-gray-200 rounded resize-none mb-2 min-h-[56px]" placeholder="JD（可选）" />
               <button onClick={handleAnalyze} disabled={isAnalyzing} className="w-full py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400 mb-2">{isAnalyzing ? '分析中...' : '🚀 分析'}</button>
               {isAnalyzing && <LoadingSkeleton lines={3} />}
               {!isAnalyzing && !aiResult && <div className="text-center py-4 text-gray-400"><div className="text-xl mb-1">🤖</div><p className="text-xs">点击分析</p></div>}
