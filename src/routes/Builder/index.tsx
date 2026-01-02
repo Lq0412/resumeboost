@@ -1,31 +1,21 @@
-import { useNavigate } from 'react-router-dom';
-import { useRef, useState } from 'react';
+/*  */import { useNavigate } from 'react-router-dom';
+import { useRef, useState, useCallback } from 'react';
 import { useBuilderForm } from './useBuilderForm';
 import { formToMarkdown } from './formToMarkdown';
 import { mask } from '../../lib';
-import { showToast, LoadingSkeleton } from '../../components';
+import { showToast } from '../../components';
 import { api, handleAPIError } from '../../lib/api';
 import { ResumePreview } from './ResumePreview';
 import { EditablePreview } from './EditablePreview';
 import { CompactInput, CompactDateRange } from './FormInputs';
 import { useAutoResizeTextarea, useDragResize } from './hooks';
 import { exportToPDF } from './pdfExport';
-import { mapSectionFromTitle, MAX_PHOTO_SIZE, MIN_RESUME_LENGTH } from './utils';
+import { MAX_PHOTO_SIZE, MIN_RESUME_LENGTH } from './utils';
+import { AISuggestionPanel } from './AISuggestionPanel';
+import type { AISuggestion } from './types';
 
 type DensityMode = 'normal' | 'compact' | 'tight';
 type EditTab = 'basic' | 'edu' | 'skill' | 'work' | 'project' | 'award';
-
-interface AIIssue {
-  section: string;
-  title: string;
-  why: string;
-  how: string;
-}
-
-interface AIResult {
-  issues: AIIssue[];
-  actions: string[];
-}
 
 export default function Builder() {
   const navigate = useNavigate();
@@ -46,7 +36,9 @@ export default function Builder() {
   const [showAISidebar, setShowAISidebar] = useState(false);
   const [jdText, setJdText] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [aiResult, setAiResult] = useState<AIResult | null>(null);
+  
+  // AI 智能改写建议
+  const [aiSuggestions, setAiSuggestions] = useState<AISuggestion[]>([]);
   
   // 可拖拽调节宽度
   const [leftWidth, setLeftWidth] = useState(340);
@@ -89,7 +81,30 @@ export default function Builder() {
   useDragResize(isDraggingLeft, setLeftWidth, 260, 450);
   useDragResize(isDraggingRight, setRightWidth, 220, 350, true);
 
-  // AI 分析
+  // 解析 AI 返回的 path，获取 section 信息
+  const parseSuggestionPath = useCallback((path: string): Pick<AISuggestion, 'section' | 'sectionLabel' | 'itemIndex' | 'bulletIndex' | 'field'> => {
+    const parts = path.split('.');
+    const sectionMap: Record<string, { section: AISuggestion['section']; label: string }> = {
+      'experience': { section: 'work', label: '工作经历' },
+      'projects': { section: 'project', label: '项目经历' },
+      'education': { section: 'edu', label: '教育经历' },
+      'skillCategories': { section: 'skill', label: '专业技能' },
+      'basicInfo': { section: 'basic', label: '基本信息' },
+    };
+    
+    const sectionKey = parts[0];
+    const sectionInfo = sectionMap[sectionKey] || { section: 'basic' as const, label: '其他' };
+    
+    return {
+      section: sectionInfo.section,
+      sectionLabel: sectionInfo.label,
+      itemIndex: parts[1] ? parseInt(parts[1]) : undefined,
+      bulletIndex: parts[3] ? parseInt(parts[3]) : undefined,
+      field: parts[2] || undefined,
+    };
+  }, []);
+
+  // AI 智能改写分析
   const handleAnalyze = async () => {
     const markdown = formToMarkdown(form);
     if (markdown.trim().length < MIN_RESUME_LENGTH) {
@@ -97,28 +112,126 @@ export default function Builder() {
       return;
     }
     setIsAnalyzing(true);
+    setAiSuggestions([]); // 清空之前的建议
+    
     try {
-      const { masked } = mask(markdown);
-      const result = await api.analyze({
-        resume_text: masked,
-        jd_text: jdText ? mask(jdText).masked : null,
-        lang: 'auto',
-        mask_enabled: true,
+      // 构建结构化的简历数据
+      const resumeData = {
+        experience: form.experience
+          .filter(e => e.company)
+          .map((exp, index) => ({
+            index,
+            company: exp.company,
+            position: exp.position,
+            bullets: exp.bullets
+              .filter(b => b && b.trim())
+              .map((text, bulletIndex) => ({ index: bulletIndex, text })),
+          })),
+        projects: form.projects
+          .filter(p => p.name)
+          .map((proj, index) => ({
+            index,
+            name: proj.name,
+            role: proj.role || '',
+            bullets: proj.bullets
+              .filter(b => b && b.trim())
+              .map((text, bulletIndex) => ({ index: bulletIndex, text })),
+          })),
+      };
+
+      const result = await api.rewriteSuggestions({
+        resume_data: resumeData,
+        jd_text: jdText || null,
       });
-      setAiResult({
-        issues: (result.issues || []).map((i: { title: string; why: string; how: string }) => ({ 
-          ...i, 
-          section: mapSectionFromTitle(i.title) 
-        })),
-        actions: result.actions || [],
-      });
-      showToast('AI 分析完成', 'success');
+      
+      // 转换为 AISuggestion 格式
+      const suggestions: AISuggestion[] = (result.suggestions || []).map((s, index) => ({
+        id: `suggestion-${index}-${Date.now()}`,
+        path: s.path,
+        ...parseSuggestionPath(s.path),
+        original: s.original,
+        suggested: s.suggested,
+        reason: s.reason,
+        status: 'pending' as const,
+      }));
+      
+      setAiSuggestions(suggestions);
+      
+      if (suggestions.length > 0) {
+        showToast(`AI 找到 ${suggestions.length} 条改进建议`, 'success');
+      } else {
+        showToast('简历内容已经很好，暂无改进建议', 'success');
+      }
     } catch (error) {
       handleAPIError(error);
     } finally {
       setIsAnalyzing(false);
     }
   };
+
+  // 接受单条建议
+  const handleAcceptSuggestion = useCallback((id: string) => {
+    const suggestion = aiSuggestions.find(s => s.id === id);
+    if (!suggestion || suggestion.status !== 'pending') return;
+    
+    // 应用修改到表单
+    const parts = suggestion.path.split('.');
+    const sectionKey = parts[0];
+    const itemIndex = parts[1] ? parseInt(parts[1]) : 0;
+    const field = parts[2];
+    const bulletIndex = parts[3] ? parseInt(parts[3]) : undefined;
+    
+    if (sectionKey === 'experience' && field === 'bullets' && bulletIndex !== undefined) {
+      updateExperienceBullet(form.experience[itemIndex]?.id, bulletIndex, suggestion.suggested);
+    } else if (sectionKey === 'projects' && field === 'bullets' && bulletIndex !== undefined) {
+      updateProjectBullet(form.projects[itemIndex]?.id, bulletIndex, suggestion.suggested);
+    } else if (sectionKey === 'experience' && field === 'position') {
+      updateExperience(form.experience[itemIndex]?.id, 'position', suggestion.suggested);
+    } else if (sectionKey === 'projects' && field === 'name') {
+      updateProject(form.projects[itemIndex]?.id, 'name', suggestion.suggested);
+    } else if (sectionKey === 'projects' && field === 'role') {
+      updateProject(form.projects[itemIndex]?.id, 'role', suggestion.suggested);
+    } else if (sectionKey === 'education' && field === 'description') {
+      updateEducation(form.education[itemIndex]?.id, 'description', suggestion.suggested);
+    } else if (sectionKey === 'skillCategories' && field === 'description') {
+      updateSkillCategory(form.skillCategories?.[itemIndex]?.id || '', 'description', suggestion.suggested);
+    } else if (sectionKey === 'basicInfo' && field === 'jobTitle') {
+      updateBasicInfo('jobTitle', suggestion.suggested);
+    }
+    
+    // 更新建议状态
+    setAiSuggestions(prev => prev.map(s => 
+      s.id === id ? { ...s, status: 'accepted' as const } : s
+    ));
+    
+    showToast('已应用修改', 'success');
+  }, [aiSuggestions, form, updateExperienceBullet, updateProjectBullet, updateExperience, updateProject, updateEducation, updateSkillCategory, updateBasicInfo]);
+
+  // 拒绝单条建议
+  const handleRejectSuggestion = useCallback((id: string) => {
+    setAiSuggestions(prev => prev.map(s => 
+      s.id === id ? { ...s, status: 'rejected' as const } : s
+    ));
+  }, []);
+
+  // 全部接受
+  const handleAcceptAll = useCallback(() => {
+    aiSuggestions.filter(s => s.status === 'pending').forEach(s => {
+      handleAcceptSuggestion(s.id);
+    });
+  }, [aiSuggestions, handleAcceptSuggestion]);
+
+  // 全部拒绝
+  const handleRejectAll = useCallback(() => {
+    setAiSuggestions(prev => prev.map(s => 
+      s.status === 'pending' ? { ...s, status: 'rejected' as const } : s
+    ));
+  }, []);
+
+  // 定位到建议对应的位置
+  const handleLocateSuggestion = useCallback((suggestion: AISuggestion) => {
+    setActiveTab(suggestion.section);
+  }, []);
 
   const handleOpenAI = () => {
     const markdown = formToMarkdown(form);
@@ -524,6 +637,9 @@ export default function Builder() {
                 onUpdateSkillCategory={updateSkillCategory}
                 onUpdateSkills={updateSkills}
                 onUpdateAward={updateAward}
+                aiSuggestions={aiSuggestions}
+                onAcceptSuggestion={handleAcceptSuggestion}
+                onRejectSuggestion={handleRejectSuggestion}
               />
             ) : (
               <ResumePreview 
@@ -544,77 +660,20 @@ export default function Builder() {
           />
         )}
         {showAISidebar && (
-          <div className="flex-shrink-0 bg-white border-l border-gray-200 flex flex-col" style={{ width: rightWidth }}>
-            <div className="h-10 bg-gradient-to-r from-blue-50 to-purple-50 px-4 flex items-center justify-between border-b border-gray-200 flex-shrink-0">
-              <span className="text-xs font-semibold text-gray-800">✨ AI 助手</span>
-              <button 
-                onClick={() => setShowAISidebar(false)} 
-                className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded transition-colors"
-              >
-                ×
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar">
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1.5">职位描述（可选）</label>
-                <textarea 
-                  value={jdText} 
-                  onChange={(e) => { 
-                    setJdText(e.target.value); 
-                    handleTextareaResize(e);
-                  }} 
-                  onFocus={handleTextareaFocus}
-                  className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all min-h-[80px] placeholder:text-gray-400" 
-                  placeholder="粘贴目标职位的 JD，AI 将提供针对性建议" 
-                />
-              </div>
-              <button 
-                onClick={handleAnalyze} 
-                disabled={isAnalyzing} 
-                className="w-full py-2.5 text-xs bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-400 transition-all font-medium"
-              >
-                {isAnalyzing ? '🔄 分析中...' : '🚀 开始分析'}
-              </button>
-              {isAnalyzing && <LoadingSkeleton lines={3} />}
-              {!isAnalyzing && !aiResult && (
-                <div className="text-center py-6 text-gray-400">
-                  <div className="text-2xl mb-2">🤖</div>
-                  <p className="text-xs">点击上方按钮开始分析</p>
-                </div>
-              )}
-              {!isAnalyzing && aiResult && (
-                <div className="space-y-3">
-                  {aiResult.issues.length > 0 ? (
-                    aiResult.issues.map((issue, i) => (
-                      <div key={i} className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs">
-                        <p className="font-semibold text-amber-900 mb-1">{issue.title}</p>
-                        <p className="text-amber-800 mb-2">{issue.why}</p>
-                        <div className="text-gray-700 bg-white p-2 rounded border border-amber-100">
-                          💡 {issue.how}
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-xs text-center">
-                      <span className="text-green-700 font-medium">✓ 简历质量良好</span>
-                    </div>
-                  )}
-                  {aiResult.actions.length > 0 && (
-                    <div className="pt-3 border-t border-gray-200">
-                      <p className="text-xs font-semibold text-gray-800 mb-2">优化建议</p>
-                      <div className="space-y-1.5">
-                        {aiResult.actions.map((a, i) => (
-                          <div key={i} className="flex gap-2 text-xs text-gray-600">
-                            <span className="text-green-600 flex-shrink-0">✓</span>
-                            <span>{a}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+          <div className="flex-shrink-0" style={{ width: rightWidth }}>
+            <AISuggestionPanel
+              suggestions={aiSuggestions}
+              isLoading={isAnalyzing}
+              jdText={jdText}
+              onJdChange={setJdText}
+              onAnalyze={handleAnalyze}
+              onAccept={handleAcceptSuggestion}
+              onReject={handleRejectSuggestion}
+              onAcceptAll={handleAcceptAll}
+              onRejectAll={handleRejectAll}
+              onLocate={handleLocateSuggestion}
+              onClose={() => setShowAISidebar(false)}
+            />
           </div>
         )}
       </div>

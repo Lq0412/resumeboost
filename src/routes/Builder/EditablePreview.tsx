@@ -2,6 +2,8 @@ import { useRef, useState, useEffect } from 'react';
 import { useBuilderForm } from './useBuilderForm';
 import { A4_WIDTH, A4_HEIGHT, densityStyles, formatTime } from './utils';
 import { EditableField } from './EditableField';
+import { AIDiffBlockMultiline } from './AIDiffBlock';
+import type { AISuggestion } from './types';
 
 type DensityMode = 'normal' | 'compact' | 'tight';
 
@@ -21,6 +23,10 @@ interface EditablePreviewProps {
   onUpdateSkillCategory: ReturnType<typeof useBuilderForm>['updateSkillCategory'];
   onUpdateSkills: ReturnType<typeof useBuilderForm>['updateSkills'];
   onUpdateAward: ReturnType<typeof useBuilderForm>['updateAward'];
+  // AI 建议相关
+  aiSuggestions?: AISuggestion[];
+  onAcceptSuggestion?: (id: string) => void;
+  onRejectSuggestion?: (id: string) => void;
 }
 
 export function EditablePreview({ 
@@ -38,6 +44,9 @@ export function EditablePreview({
   onUpdateSkillCategory,
   onUpdateSkills,
   onUpdateAward,
+  aiSuggestions = [],
+  onAcceptSuggestion,
+  onRejectSuggestion,
 }: EditablePreviewProps) {
   const contentRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -48,6 +57,11 @@ export function EditablePreview({
 
   // 计算可用高度（A4 高度减去上下 padding）
   const availableHeight = A4_HEIGHT - styles.padding * 2;
+
+  // 查找对应路径的建议
+  const findSuggestion = (path: string): AISuggestion | undefined => {
+    return aiSuggestions.find(s => s.path === path && s.status === 'pending');
+  };
 
   // 使用 ResizeObserver 监听内容高度变化
   useEffect(() => {
@@ -442,17 +456,34 @@ export function EditablePreview({
                     </div>
                     {exp.bullets.filter(b => b && b.trim()).length > 0 && (
                       <ul className="space-y-0">
-                        {exp.bullets.filter(b => b && b.trim()).map((bullet, i) => (
-                          <li key={i} className={`text-gray-700 ${styles.textSize} flex`}>
-                            <span className="mr-1">•</span>
-                            <EditableField
-                              value={bullet}
-                              onChange={(v) => onUpdateExperienceBullet(exp.id, i, v)}
-                            >
-                              {bullet}
-                            </EditableField>
-                          </li>
-                        ))}
+                        {exp.bullets.filter(b => b && b.trim()).map((bullet, i) => {
+                          const expIndex = form.experience.findIndex(e => e.id === exp.id);
+                          const suggestion = findSuggestion(`experience.${expIndex}.bullets.${i}`);
+                          
+                          if (suggestion && onAcceptSuggestion && onRejectSuggestion) {
+                            return (
+                              <li key={i} className={`text-gray-700 ${styles.textSize}`}>
+                                <AIDiffBlockMultiline
+                                  suggestion={suggestion}
+                                  onAccept={onAcceptSuggestion}
+                                  onReject={onRejectSuggestion}
+                                />
+                              </li>
+                            );
+                          }
+                          
+                          return (
+                            <li key={i} className={`text-gray-700 ${styles.textSize} flex`}>
+                              <span className="mr-1">•</span>
+                              <EditableField
+                                value={bullet}
+                                onChange={(v) => onUpdateExperienceBullet(exp.id, i, v)}
+                              >
+                                {bullet}
+                              </EditableField>
+                            </li>
+                          );
+                        })}
                       </ul>
                     )}
                   </div>
@@ -498,17 +529,34 @@ export function EditablePreview({
                     </div>
                     {proj.bullets.filter(b => b && b.trim()).length > 0 && (
                       <ul className="space-y-0">
-                        {proj.bullets.filter(b => b && b.trim()).map((bullet, i) => (
-                          <li key={i} className={`text-gray-700 ${styles.textSize} flex`}>
-                            <span className="mr-1">•</span>
-                            <EditableField
-                              value={bullet}
-                              onChange={(v) => onUpdateProjectBullet(proj.id, i, v)}
-                            >
-                              {bullet}
-                            </EditableField>
-                          </li>
-                        ))}
+                        {proj.bullets.filter(b => b && b.trim()).map((bullet, i) => {
+                          const projIndex = form.projects.findIndex(p => p.id === proj.id);
+                          const suggestion = findSuggestion(`projects.${projIndex}.bullets.${i}`);
+                          
+                          if (suggestion && onAcceptSuggestion && onRejectSuggestion) {
+                            return (
+                              <li key={i} className={`text-gray-700 ${styles.textSize}`}>
+                                <AIDiffBlockMultiline
+                                  suggestion={suggestion}
+                                  onAccept={onAcceptSuggestion}
+                                  onReject={onRejectSuggestion}
+                                />
+                              </li>
+                            );
+                          }
+                          
+                          return (
+                            <li key={i} className={`text-gray-700 ${styles.textSize} flex`}>
+                              <span className="mr-1">•</span>
+                              <EditableField
+                                value={bullet}
+                                onChange={(v) => onUpdateProjectBullet(proj.id, i, v)}
+                              >
+                                {bullet}
+                              </EditableField>
+                            </li>
+                          );
+                        })}
                       </ul>
                     )}
                   </div>

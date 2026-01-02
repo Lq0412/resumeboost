@@ -96,6 +96,43 @@ const PROMPTS = {
 - 不编造具体数字，用占位符并在cautions提醒
 - cautions中说明哪些地方需要用户补充真实数据`,
 
+  rewrite_suggestions: `你是资深简历优化专家。分析简历中的工作经历和项目经历描述，给出具体的改写建议。
+
+## 输入格式
+你会收到结构化的简历数据，包含：
+- experience: 工作经历列表，每条包含 index、company、position、bullets（描述列表）
+- projects: 项目经历列表，每条包含 index、name、role、bullets（描述列表）
+
+## 改写原则
+1. 使用 STAR 法则（情境-任务-行动-结果）
+2. 添加量化数据（如果原文有基础，用具体数字；如果没有，用 X%、X+ 占位）
+3. 使用强有力的动词（主导、设计、优化、提升、推动等）
+4. 突出个人贡献和成果
+5. 保持专业、简洁，每条建议不超过 50 字
+
+## 输出格式（严格 JSON）
+{
+  "suggestions": [
+    {
+      "path": "experience.0.bullets.0",
+      "original": "原文内容（必须与输入完全一致）",
+      "suggested": "改写后的内容",
+      "reason": "改写原因（10-15字）"
+    }
+  ]
+}
+
+## path 格式
+- experience.{index}.bullets.{bulletIndex} - 工作经历的第 index 条的第 bulletIndex 条描述
+- projects.{index}.bullets.{bulletIndex} - 项目经历的第 index 条的第 bulletIndex 条描述
+
+## 重要规则
+1. original 字段必须与输入的 text 完全一致，一字不差
+2. 只改写需要优化的内容，已经很好的描述不要改
+3. 每条 reason 要简短有力（10-15字）
+4. 最多返回 8 条建议，优先改写最需要优化的内容
+5. 如果所有描述都很好，返回空数组`,
+
   finalize: `你是简历排版专家。根据简历内容生成ATS友好的最终版本。
 
 ## 排版要求（simple_v1模板）
@@ -137,6 +174,13 @@ async function callDeepSeekDirect<T>(url: string, options: RequestInit): Promise
   } else if (url.includes('/api/match')) {
     systemPrompt = PROMPTS.match;
     userPrompt = `简历：\n${body.resume_text}\n\nJD：\n${body.jd_text}`;
+  } else if (url.includes('/api/rewrite-suggestions')) {
+    systemPrompt = PROMPTS.rewrite_suggestions;
+    let userPrompt = '请分析以下简历内容，给出改写建议：\n\n';
+    userPrompt += JSON.stringify(body.resume_data, null, 2);
+    if (body.jd_text) {
+      userPrompt += `\n\n目标职位 JD：\n${body.jd_text}\n\n请根据 JD 要求，针对性地优化简历内容。`;
+    }
   } else if (url.includes('/api/rewrite')) {
     systemPrompt = body.style === 'conservative' ? PROMPTS.rewrite_conservative : PROMPTS.rewrite_strong;
     userPrompt = `改写：\n${body.source_text}${body.jd_text ? `\n\n参考JD：\n${body.jd_text}` : ''}`;
@@ -272,6 +316,36 @@ export interface FinalizeResponse {
   final_html: string;
 }
 
+// AI 改写建议相关类型
+export interface RewriteSuggestionsRequest {
+  resume_data: {
+    experience: Array<{
+      index: number;
+      company: string;
+      position: string;
+      bullets: Array<{ index: number; text: string }>;
+    }>;
+    projects: Array<{
+      index: number;
+      name: string;
+      role: string;
+      bullets: Array<{ index: number; text: string }>;
+    }>;
+  };
+  jd_text?: string | null;
+}
+
+export interface RewriteSuggestionItem {
+  path: string;
+  original: string;
+  suggested: string;
+  reason: string;
+}
+
+export interface RewriteSuggestionsResponse {
+  suggestions: RewriteSuggestionItem[];
+}
+
 /**
  * 统一的 fetch 封装
  */
@@ -384,6 +458,16 @@ export const api = {
    */
   async finalize(params: FinalizeRequest): Promise<FinalizeResponse> {
     return fetchJson<FinalizeResponse>('/api/finalize', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    });
+  },
+
+  /**
+   * AI 智能改写建议
+   */
+  async rewriteSuggestions(params: RewriteSuggestionsRequest): Promise<RewriteSuggestionsResponse> {
+    return fetchJson<RewriteSuggestionsResponse>('/api/rewrite-suggestions', {
       method: 'POST',
       body: JSON.stringify(params),
     });
