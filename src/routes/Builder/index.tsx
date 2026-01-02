@@ -868,32 +868,34 @@ function CompactDateRange({ startYear, startMonth, endYear, endMonth, onStartCha
   const currentYear = new Date().getFullYear();
   const years = [...Array.from({ length: 5 }, (_, i) => String(currentYear + 5 - i)), ...Array.from({ length: 25 }, (_, i) => String(currentYear - i))];
   const months = ['01','02','03','04','05','06','07','08','09','10','11','12'];
-  const sel = "px-1 py-1 text-xs border border-gray-200 rounded bg-white focus:ring-1 focus:ring-blue-500";
+  const sel = "px-1 py-1 text-xs border border-gray-200 rounded bg-white focus:ring-1 focus:ring-blue-500 min-w-0";
   
   return (
-    <div className="flex items-center gap-1 text-xs">
-      <select value={startYear || ''} onChange={(e) => onStartChange(e.target.value, startMonth || '')} className={`${sel} w-16`}>
-        <option value="">年</option>
-        {years.map(y => <option key={y} value={y}>{y}</option>)}
-      </select>
-      <select value={startMonth || ''} onChange={(e) => onStartChange(startYear || '', e.target.value)} className={`${sel} w-12`}>
-        <option value="">月</option>
-        {months.map(m => <option key={m} value={m}>{parseInt(m)}</option>)}
-      </select>
-      <span className="text-gray-400">~</span>
-      <select value={endYear || ''} onChange={(e) => onEndChange(e.target.value, e.target.value === 'present' ? '' : (endMonth || ''))} className={`${sel} w-16`}>
-        <option value="">年</option>
-        {showPresent && <option value="present">至今</option>}
-        {years.map(y => <option key={y} value={y}>{y}</option>)}
-      </select>
-      {endYear !== 'present' && (
-        <select value={endMonth || ''} onChange={(e) => onEndChange(endYear || '', e.target.value)} className={`${sel} w-12`}>
+    <div className="flex items-center gap-1 text-xs flex-wrap">
+      <div className="flex gap-0.5 flex-1 min-w-[90px]">
+        <select value={startYear || ''} onChange={(e) => onStartChange(e.target.value, startMonth || '')} className={`${sel} flex-1`}>
+          <option value="">年</option>
+          {years.map(y => <option key={y} value={y}>{y}</option>)}
+        </select>
+        <select value={startMonth || ''} onChange={(e) => onStartChange(startYear || '', e.target.value)} className={`${sel} w-10`}>
           <option value="">月</option>
           {months.map(m => <option key={m} value={m}>{parseInt(m)}</option>)}
         </select>
-      )}
+      </div>
+      <span className="text-gray-400 flex-shrink-0">~</span>
+      <div className="flex gap-0.5 flex-1 min-w-[90px]">
+        <select value={endYear || ''} onChange={(e) => onEndChange(e.target.value, e.target.value === 'present' ? '' : (endMonth || ''))} className={`${sel} flex-1`}>
+          <option value="">年</option>
+          {showPresent && <option value="present">至今</option>}
+          {years.map(y => <option key={y} value={y}>{y}</option>)}
+        </select>
+        {endYear !== 'present' && (
+          <select value={endMonth || ''} onChange={(e) => onEndChange(endYear || '', e.target.value)} className={`${sel} w-10`}>
+            <option value="">月</option>
+            {months.map(m => <option key={m} value={m}>{parseInt(m)}</option>)}
+          </select>
+        )}
+      </div>
     </div>
   );
 }
-
-
