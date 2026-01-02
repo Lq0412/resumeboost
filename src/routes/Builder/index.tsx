@@ -452,7 +452,7 @@ export default function Builder() {
                     <CompactInput label="城市" value={form.basicInfo.city || ''} onChange={(v) => updateBasicInfo('city', v)} placeholder="北京" />
                   </div>
                 </div>
-                <details className="text-xs">
+                <details className="text-xs" open>
                   <summary className="text-blue-600 cursor-pointer hover:text-blue-800">+ 更多信息</summary>
                   <div className="mt-2 space-y-2 pt-2 border-t border-gray-100">
                     <CompactInput label="GitHub" value={form.basicInfo.github || ''} onChange={(v) => updateBasicInfo('github', v)} placeholder="github.com/xxx" />
