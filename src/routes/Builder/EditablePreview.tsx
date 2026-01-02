@@ -10,6 +10,7 @@ interface EditablePreviewProps {
   densityMode?: DensityMode;
   previewRef?: React.RefObject<HTMLDivElement | null>;
   onOverflowChange?: (isOverflow: boolean) => void;
+  onSectionClick?: (section: 'basic' | 'edu' | 'skill' | 'work' | 'project' | 'award') => void;
   // 编辑回调
   onUpdateBasicInfo: ReturnType<typeof useBuilderForm>['updateBasicInfo'];
   onUpdateEducation: ReturnType<typeof useBuilderForm>['updateEducation'];
@@ -27,6 +28,7 @@ export function EditablePreview({
   densityMode = 'normal', 
   previewRef, 
   onOverflowChange,
+  onSectionClick,
   onUpdateBasicInfo,
   onUpdateEducation,
   onUpdateExperience,
@@ -140,7 +142,10 @@ export function EditablePreview({
         >
           <div ref={contentRef}>
             {/* 头部 */}
-            <div className={`${styles.sectionGap} flex`}>
+            <div 
+              className={`${styles.sectionGap} flex cursor-pointer hover:bg-blue-50/50 -mx-2 px-2 py-1 rounded transition-colors`}
+              onClick={() => onSectionClick?.('basic')}
+            >
               <div className="flex-1 pr-4">
                 <h1 className={`${styles.titleSize} font-bold text-gray-900 mb-1`}>
                   <EditableField
@@ -213,7 +218,10 @@ export function EditablePreview({
 
             {/* 教育经历 */}
             {form.education.some(e => e.school) && (
-              <div className={styles.sectionGap}>
+              <div 
+                className={`${styles.sectionGap} cursor-pointer hover:bg-blue-50/50 -mx-2 px-2 py-1 rounded transition-colors`}
+                onClick={() => onSectionClick?.('edu')}
+              >
                 <h2 className={`${styles.sectionTitleSize} font-bold text-gray-900 border-b-2 border-gray-800 pb-2 mb-2`}>
                   教育经历
                 </h2>
@@ -272,7 +280,10 @@ export function EditablePreview({
 
             {/* 专业技能 */}
             {(form.skillCategories?.some(c => c.name) || form.skills) && (
-              <div className={styles.sectionGap}>
+              <div 
+                className={`${styles.sectionGap} cursor-pointer hover:bg-blue-50/50 -mx-2 px-2 py-1 rounded transition-colors`}
+                onClick={() => onSectionClick?.('skill')}
+              >
                 <h2 className={`${styles.sectionTitleSize} font-bold text-gray-900 border-b-2 border-gray-800 pb-2 mb-2`}>
                   专业技能
                 </h2>
@@ -315,7 +326,10 @@ export function EditablePreview({
 
             {/* 工作经历 */}
             {form.experience.some(e => e.company) && (
-              <div className={styles.sectionGap}>
+              <div 
+                className={`${styles.sectionGap} cursor-pointer hover:bg-blue-50/50 -mx-2 px-2 py-1 rounded transition-colors`}
+                onClick={() => onSectionClick?.('work')}
+              >
                 <h2 className={`${styles.sectionTitleSize} font-bold text-gray-900 border-b-2 border-gray-800 pb-2 mb-2`}>
                   工作经历
                 </h2>
@@ -367,7 +381,10 @@ export function EditablePreview({
 
             {/* 项目经历 */}
             {form.projects.some(p => p.name) && (
-              <div className={styles.sectionGap}>
+              <div 
+                className={`${styles.sectionGap} cursor-pointer hover:bg-blue-50/50 -mx-2 px-2 py-1 rounded transition-colors`}
+                onClick={() => onSectionClick?.('project')}
+              >
                 <h2 className={`${styles.sectionTitleSize} font-bold text-gray-900 border-b-2 border-gray-800 pb-2 mb-2`}>
                   项目经历
                 </h2>
@@ -420,7 +437,10 @@ export function EditablePreview({
 
             {/* 荣誉奖项 */}
             {form.awards?.some(a => a.name) && (
-              <div className={styles.sectionGap}>
+              <div 
+                className={`${styles.sectionGap} cursor-pointer hover:bg-blue-50/50 -mx-2 px-2 py-1 rounded transition-colors`}
+                onClick={() => onSectionClick?.('award')}
+              >
                 <h2 className={`${styles.sectionTitleSize} font-bold text-gray-900 border-b-2 border-gray-800 pb-2 mb-2`}>
                   荣誉奖项
                 </h2>

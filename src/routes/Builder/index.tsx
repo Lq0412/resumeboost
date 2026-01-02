@@ -35,6 +35,11 @@ export default function Builder() {
   const [hasDraft, setHasDraft] = useState(() => !!localStorage.getItem('resumeboost_draft'));
   const [isOverflowing, setIsOverflowing] = useState(false);
   const [editMode, setEditMode] = useState<'form' | 'preview'>('preview'); // 默认使用可编辑预览
+
+  // 处理预览区点击，跳转到对应的表单 Tab
+  const handlePreviewSectionClick = (section: EditTab) => {
+    setActiveTab(section);
+  };
   
   // Cursor 风格：Tab 切换 + AI 侧边栏
   const [activeTab, setActiveTab] = useState<EditTab>('basic');
@@ -496,6 +501,7 @@ export default function Builder() {
                 densityMode={densityMode} 
                 previewRef={previewRef} 
                 onOverflowChange={setIsOverflowing}
+                onSectionClick={handlePreviewSectionClick}
                 onUpdateBasicInfo={updateBasicInfo}
                 onUpdateEducation={updateEducation}
                 onUpdateExperience={updateExperience}
