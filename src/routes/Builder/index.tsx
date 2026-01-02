@@ -426,26 +426,34 @@ export default function Builder() {
           <div className="flex-1 overflow-y-auto p-3">
             {/* 基本信息 */}
             {activeTab === 'basic' && (
-              <div className="space-y-2">
-                <div className="flex gap-2">
-                  <div className="flex-1 space-y-2">
+              <div className="space-y-3">
+                {/* 照片区域 - 顶部居中 */}
+                <div className="flex justify-center">
+                  <div className="text-center">
+                    <input ref={photoInputRef} type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
+                    <div onClick={() => photoInputRef.current?.click()} className="w-16 h-20 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors overflow-hidden mx-auto">
+                      {form.photo ? <img src={form.photo} alt="" className="w-full h-full object-cover" /> : <span className="text-gray-400 text-lg">📷</span>}
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">{form.photo ? <button onClick={() => setPhoto('')} className="text-red-500 hover:text-red-600">删除照片</button> : '点击上传'}</p>
+                  </div>
+                </div>
+                {/* 基本信息表单 */}
+                <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
                     <CompactInput label="姓名" value={form.basicInfo.name || ''} onChange={(v) => updateBasicInfo('name', v)} placeholder="张三" />
                     <CompactInput label="求职意向" value={form.basicInfo.jobTitle || ''} onChange={(v) => updateBasicInfo('jobTitle', v)} placeholder="Java开发" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
                     <CompactInput label="手机" value={form.basicInfo.phone} onChange={(v) => updateBasicInfo('phone', v)} placeholder="138xxxx" />
                     <CompactInput label="邮箱" value={form.basicInfo.email} onChange={(v) => updateBasicInfo('email', v)} placeholder="email" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
                     <CompactInput label="状态" value={form.basicInfo.status || ''} onChange={(v) => updateBasicInfo('status', v)} placeholder="在职/应届" />
                     <CompactInput label="城市" value={form.basicInfo.city || ''} onChange={(v) => updateBasicInfo('city', v)} placeholder="北京" />
                   </div>
-                  <div className="flex-shrink-0">
-                    <input ref={photoInputRef} type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
-                    <div onClick={() => photoInputRef.current?.click()} className="w-14 h-18 border border-dashed border-gray-300 rounded flex items-center justify-center cursor-pointer hover:border-blue-400 overflow-hidden">
-                      {form.photo ? <img src={form.photo} alt="" className="w-full h-full object-cover" /> : <span className="text-gray-400 text-xs">📷</span>}
-                    </div>
-                    {form.photo && <button onClick={() => setPhoto('')} className="text-xs text-red-500 w-full text-center mt-1">删除</button>}
-                  </div>
                 </div>
                 <details className="text-xs">
-                  <summary className="text-blue-600 cursor-pointer hover:text-blue-800">+ 更多</summary>
+                  <summary className="text-blue-600 cursor-pointer hover:text-blue-800">+ 更多信息</summary>
                   <div className="mt-2 space-y-2 pt-2 border-t border-gray-100">
                     <CompactInput label="GitHub" value={form.basicInfo.github || ''} onChange={(v) => updateBasicInfo('github', v)} placeholder="github.com/xxx" />
                     <CompactInput label="网站" value={form.basicInfo.website || ''} onChange={(v) => updateBasicInfo('website', v)} placeholder="yoursite.com" />
