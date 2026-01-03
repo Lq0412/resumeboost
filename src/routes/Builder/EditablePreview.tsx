@@ -58,9 +58,32 @@ export function EditablePreview({
   // 计算可用高度（A4 高度减去上下 padding）
   const availableHeight = A4_HEIGHT - styles.padding * 2;
 
-  // 查找对应路径的建议
-  const findSuggestion = (path: string): AISuggestion | undefined => {
-    return aiSuggestions.find(s => s.path === path && s.status === 'pending');
+  // 是否有待处理的 AI 建议（需要扩展显示）
+  const hasPendingSuggestions = aiSuggestions.some(s => s.status === 'pending');
+
+  // 查找对应路径的建议，同时验证原文内容
+  const findSuggestion = (path: string, originalText?: string): AISuggestion | undefined => {
+    const found = aiSuggestions.find(s => {
+      if (s.status !== 'pending') return false;
+      
+      // 首先通过 path 精确匹配
+      if (s.path === path) {
+        return true;
+      }
+      
+      // 如果 path 不匹配，尝试通过原文内容匹配
+      if (originalText) {
+        const normalizedOriginal = s.original.trim();
+        const normalizedText = originalText.trim();
+        if (normalizedOriginal === normalizedText) {
+          return true;
+        }
+      }
+      
+      return false;
+    });
+    
+    return found;
   };
 
   // 使用 ResizeObserver 监听内容高度变化
@@ -147,18 +170,31 @@ export function EditablePreview({
       {/* 页面使用情况指示器 */}
       <div className="w-full max-w-md mb-3">
         <div className="flex justify-between text-xs text-gray-300 mb-1">
-          <span>页面使用: {usedPercent}% <span className="text-gray-500 text-[10px]">(点击可编辑)</span></span>
-          <span>{isOverflow ? `⚠️ 约 ${pages} 页` : '✓ 1 页内'}</span>
+          <span>
+            {hasPendingSuggestions 
+              ? `🔍 AI 建议模式（${aiSuggestions.filter(s => s.status === 'pending').length} 条待处理）` 
+              : `页面使用: ${usedPercent}%`
+            }
+            <span className="text-gray-500 text-[10px] ml-1">(点击可编辑)</span>
+          </span>
+          <span>{hasPendingSuggestions ? '📄 自动扩展' : isOverflow ? `⚠️ 约 ${pages} 页` : '✓ 1 页内'}</span>
         </div>
-        <div className="h-2 bg-gray-600 rounded-full overflow-hidden">
-          <div 
-            className={`h-full transition-all duration-300 ${
-              isOverflow ? 'bg-amber-500' : usedPercent > 85 ? 'bg-yellow-500' : 'bg-green-500'
-            }`}
-            style={{ width: `${Math.min(usedPercent, 100)}%` }}
-          />
-        </div>
-        {isOverflow && (
+        {!hasPendingSuggestions && (
+          <div className="h-2 bg-gray-600 rounded-full overflow-hidden">
+            <div 
+              className={`h-full transition-all duration-300 ${
+                isOverflow ? 'bg-amber-500' : usedPercent > 85 ? 'bg-yellow-500' : 'bg-green-500'
+              }`}
+              style={{ width: `${Math.min(usedPercent, 100)}%` }}
+            />
+          </div>
+        )}
+        {hasPendingSuggestions && (
+          <div className="p-2 bg-blue-500/20 border border-blue-400/50 rounded-lg">
+            <p className="text-blue-300 text-xs">💡 处理完所有建议后，页面将恢复 A4 尺寸预览</p>
+          </div>
+        )}
+        {!hasPendingSuggestions && isOverflow && (
           <div className="mt-2 p-2 bg-amber-500/20 border border-amber-400/50 rounded-lg">
             <p className="text-amber-300 text-xs font-medium mb-1">⚠️ 内容超过 1 页</p>
             <p className="text-amber-200 text-xs">💡 切换到「紧凑」或「极简」模式</p>
@@ -166,10 +202,14 @@ export function EditablePreview({
         )}
       </div>
 
-      {/* A4 纸张 */}
+      {/* A4 纸张 - 有 AI 建议时自动扩展高度 */}
       <div 
         className="bg-white shadow-2xl relative overflow-hidden"
-        style={{ width: A4_WIDTH * scale, height: A4_HEIGHT * scale }}
+        style={{ 
+          width: A4_WIDTH * scale, 
+          minHeight: A4_HEIGHT * scale,
+          height: hasPendingSuggestions ? 'auto' : A4_HEIGHT * scale,
+        }}
       >
         <div 
           ref={previewRef}
@@ -454,15 +494,19 @@ export function EditablePreview({
                         {formatTime(exp.startYear, exp.startMonth, exp.endYear, exp.endMonth)}
                       </span>
                     </div>
-                    {exp.bullets.filter(b => b && b.trim()).length > 0 && (
+                    {exp.bullets.some(b => b && b.trim()) && (
                       <ul className="space-y-0">
-                        {exp.bullets.filter(b => b && b.trim()).map((bullet, i) => {
+                        {exp.bullets.map((bullet, bulletIndex) => {
+                          // 跳过空的 bullet
+                          if (!bullet || !bullet.trim()) return null;
+                          
                           const expIndex = form.experience.findIndex(e => e.id === exp.id);
-                          const suggestion = findSuggestion(`experience.${expIndex}.bullets.${i}`);
+                          // 使用原始索引和内容查找建议
+                          const suggestion = findSuggestion(`experience.${expIndex}.bullets.${bulletIndex}`, bullet);
                           
                           if (suggestion && onAcceptSuggestion && onRejectSuggestion) {
                             return (
-                              <li key={i} className={`text-gray-700 ${styles.textSize}`}>
+                              <li key={bulletIndex} className={`text-gray-700 ${styles.textSize}`}>
                                 <AIDiffBlockMultiline
                                   suggestion={suggestion}
                                   onAccept={onAcceptSuggestion}
@@ -473,11 +517,11 @@ export function EditablePreview({
                           }
                           
                           return (
-                            <li key={i} className={`text-gray-700 ${styles.textSize} flex`}>
+                            <li key={bulletIndex} className={`text-gray-700 ${styles.textSize} flex`}>
                               <span className="mr-1">•</span>
                               <EditableField
                                 value={bullet}
-                                onChange={(v) => onUpdateExperienceBullet(exp.id, i, v)}
+                                onChange={(v) => onUpdateExperienceBullet(exp.id, bulletIndex, v)}
                               >
                                 {bullet}
                               </EditableField>
@@ -527,15 +571,19 @@ export function EditablePreview({
                         {formatTime(proj.startYear, proj.startMonth, proj.endYear, proj.endMonth)}
                       </span>
                     </div>
-                    {proj.bullets.filter(b => b && b.trim()).length > 0 && (
+                    {proj.bullets.some(b => b && b.trim()) && (
                       <ul className="space-y-0">
-                        {proj.bullets.filter(b => b && b.trim()).map((bullet, i) => {
+                        {proj.bullets.map((bullet, bulletIndex) => {
+                          // 跳过空的 bullet
+                          if (!bullet || !bullet.trim()) return null;
+                          
                           const projIndex = form.projects.findIndex(p => p.id === proj.id);
-                          const suggestion = findSuggestion(`projects.${projIndex}.bullets.${i}`);
+                          // 使用原始索引和内容查找建议
+                          const suggestion = findSuggestion(`projects.${projIndex}.bullets.${bulletIndex}`, bullet);
                           
                           if (suggestion && onAcceptSuggestion && onRejectSuggestion) {
                             return (
-                              <li key={i} className={`text-gray-700 ${styles.textSize}`}>
+                              <li key={bulletIndex} className={`text-gray-700 ${styles.textSize}`}>
                                 <AIDiffBlockMultiline
                                   suggestion={suggestion}
                                   onAccept={onAcceptSuggestion}
@@ -546,11 +594,11 @@ export function EditablePreview({
                           }
                           
                           return (
-                            <li key={i} className={`text-gray-700 ${styles.textSize} flex`}>
+                            <li key={bulletIndex} className={`text-gray-700 ${styles.textSize} flex`}>
                               <span className="mr-1">•</span>
                               <EditableField
                                 value={bullet}
-                                onChange={(v) => onUpdateProjectBullet(proj.id, i, v)}
+                                onChange={(v) => onUpdateProjectBullet(proj.id, bulletIndex, v)}
                               >
                                 {bullet}
                               </EditableField>
@@ -600,8 +648,8 @@ export function EditablePreview({
           </div>
         </div>
 
-        {/* 页面分割线指示 */}
-        {isOverflow && (
+        {/* 页面分割线指示 - 仅在非 AI 建议模式下显示 */}
+        {!hasPendingSuggestions && isOverflow && (
           <div 
             className="absolute left-0 right-0 border-t-2 border-dashed border-red-400 pointer-events-none"
             style={{ top: (A4_HEIGHT - styles.padding) * scale }}

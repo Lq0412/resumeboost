@@ -108,7 +108,7 @@ const PROMPTS = {
 2. 添加量化数据（如果原文有基础，用具体数字；如果没有，用 X%、X+ 占位）
 3. 使用强有力的动词（主导、设计、优化、提升、推动等）
 4. 突出个人贡献和成果
-5. 保持专业、简洁，每条建议不超过 50 字
+5. 保持专业、简洁
 
 ## 输出格式（严格 JSON）
 {
@@ -131,7 +131,10 @@ const PROMPTS = {
 2. 只改写需要优化的内容，已经很好的描述不要改
 3. 每条 reason 要简短有力（10-15字）
 4. 最多返回 8 条建议，优先改写最需要优化的内容
-5. 如果所有描述都很好，返回空数组`,
+5. 如果所有描述都很好，返回空数组
+6. **suggested 字段必须是可以直接替换原文的完整句子**，不要包含任何解释、括号说明或"建议..."等前缀
+7. 如果发现重复内容，suggested 应该是重写后的独特描述，而不是"建议删除"这样的说明
+8. suggested 的内容应该是一句完整的、专业的工作/项目描述`,
 
   finalize: `你是简历排版专家。根据简历内容生成ATS友好的最终版本。
 
@@ -157,7 +160,48 @@ const PROMPTS = {
 - 保持所有脱敏占位符不变
 - 整合已采用的改写内容
 - 确保内容完整，不遗漏原简历信息
-- 一页为主，内容精炼`
+- 一页为主，内容精炼`,
+
+  chat_edit: `你是简历优化助手。用户会用自然语言描述想要修改简历的哪个部分，你需要：
+
+1. 理解用户意图，定位到具体的简历内容
+2. 生成改写建议
+3. 返回结构化的响应
+
+## 定位规则
+用户可能这样说：
+- "优化第1个工作经历" → experience.0
+- "改写项目2的第一条描述" → projects.1.bullets.0
+- "优化工作经历1的第2条" → experience.0.bullets.1
+- "让技能描述更专业" → skillCategories.0.description
+
+## 输出格式（严格 JSON）
+{
+  "reply": "对用户的回复，解释你要做什么修改",
+  "suggestion": {
+    "path": "experience.0.bullets.0",
+    "original": "原文（必须与简历数据完全一致）",
+    "suggested": "改写后的内容",
+    "reason": "改写原因（10-15字）"
+  }
+}
+
+## path 格式
+- experience.{index}.bullets.{bulletIndex}
+- experience.{index}.position
+- projects.{index}.bullets.{bulletIndex}
+- projects.{index}.name
+- projects.{index}.role
+- education.{index}.description
+- skillCategories.{index}.description
+- basicInfo.jobTitle
+
+## 重要规则
+1. 如果用户请求不明确，在 reply 中询问具体要修改哪部分，不返回 suggestion
+2. 如果找不到对应内容，在 reply 中说明，不返回 suggestion
+3. original 必须与简历数据完全一致
+4. 一次只返回一条建议
+5. 如果用户只是闲聊或问问题，正常回复，不返回 suggestion`
 };
 
 /**
@@ -176,10 +220,16 @@ async function callDeepSeekDirect<T>(url: string, options: RequestInit): Promise
     userPrompt = `简历：\n${body.resume_text}\n\nJD：\n${body.jd_text}`;
   } else if (url.includes('/api/rewrite-suggestions')) {
     systemPrompt = PROMPTS.rewrite_suggestions;
-    let userPrompt = '请分析以下简历内容，给出改写建议：\n\n';
+    userPrompt = '请分析以下简历内容，给出改写建议：\n\n';
     userPrompt += JSON.stringify(body.resume_data, null, 2);
     if (body.jd_text) {
       userPrompt += `\n\n目标职位 JD：\n${body.jd_text}\n\n请根据 JD 要求，针对性地优化简历内容。`;
+    }
+  } else if (url.includes('/api/chat-edit')) {
+    systemPrompt = PROMPTS.chat_edit;
+    userPrompt = `用户请求：${body.message}\n\n简历数据：\n${JSON.stringify(body.resume_data, null, 2)}`;
+    if (body.jd_text) {
+      userPrompt += `\n\n目标职位 JD：\n${body.jd_text}`;
     }
   } else if (url.includes('/api/rewrite')) {
     systemPrompt = body.style === 'conservative' ? PROMPTS.rewrite_conservative : PROMPTS.rewrite_strong;
@@ -224,8 +274,13 @@ async function callDeepSeekDirect<T>(url: string, options: RequestInit): Promise
     if (jsonMatch) {
       return JSON.parse(jsonMatch[1]) as T;
     }
+    // 尝试直接解析
     return JSON.parse(content) as T;
   } catch {
+    // 对于 chat-edit，如果解析失败，返回纯文本回复
+    if (url.includes('/api/chat-edit')) {
+      return { reply: content } as T;
+    }
     throw new APIError('PARSE_ERROR', 'AI 响应解析失败', 500);
   }
 }
@@ -344,6 +399,56 @@ export interface RewriteSuggestionItem {
 
 export interface RewriteSuggestionsResponse {
   suggestions: RewriteSuggestionItem[];
+}
+
+// AI 对话式修改相关类型
+export interface ChatEditRequest {
+  message: string;
+  resume_data: {
+    basicInfo: {
+      name?: string;
+      jobTitle?: string;
+      phone?: string;
+      email?: string;
+      city?: string;
+      status?: string;
+    };
+    experience: Array<{
+      index: number;
+      company: string;
+      position: string;
+      bullets: string[];
+    }>;
+    projects: Array<{
+      index: number;
+      name: string;
+      role: string;
+      bullets: string[];
+    }>;
+    education: Array<{
+      index: number;
+      school: string;
+      major?: string;
+      degree?: string;
+      description?: string;
+    }>;
+    skillCategories?: Array<{
+      index: number;
+      name: string;
+      description: string;
+    }>;
+  };
+  jd_text?: string | null;
+}
+
+export interface ChatEditResponse {
+  reply: string;
+  suggestion?: {
+    path: string;
+    original: string;
+    suggested: string;
+    reason: string;
+  };
 }
 
 /**
@@ -468,6 +573,16 @@ export const api = {
    */
   async rewriteSuggestions(params: RewriteSuggestionsRequest): Promise<RewriteSuggestionsResponse> {
     return fetchJson<RewriteSuggestionsResponse>('/api/rewrite-suggestions', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    });
+  },
+
+  /**
+   * AI 对话式精准修改
+   */
+  async chatEdit(params: ChatEditRequest): Promise<ChatEditResponse> {
+    return fetchJson<ChatEditResponse>('/api/chat-edit', {
       method: 'POST',
       body: JSON.stringify(params),
     });

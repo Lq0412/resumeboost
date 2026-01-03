@@ -2,7 +2,6 @@
 import { useRef, useState, useCallback } from 'react';
 import { useBuilderForm } from './useBuilderForm';
 import { formToMarkdown } from './formToMarkdown';
-import { mask } from '../../lib';
 import { showToast } from '../../components';
 import { api, handleAPIError } from '../../lib/api';
 import { ResumePreview } from './ResumePreview';
@@ -115,28 +114,28 @@ export default function Builder() {
     setAiSuggestions([]); // 清空之前的建议
     
     try {
-      // 构建结构化的简历数据
+      // 构建结构化的简历数据，保留原始索引以便正确匹配
       const resumeData = {
         experience: form.experience
-          .filter(e => e.company)
-          .map((exp, index) => ({
-            index,
+          .map((exp, expIndex) => ({
+            index: expIndex,
             company: exp.company,
             position: exp.position,
             bullets: exp.bullets
-              .filter(b => b && b.trim())
-              .map((text, bulletIndex) => ({ index: bulletIndex, text })),
-          })),
+              .map((text, bulletIndex) => ({ index: bulletIndex, text }))
+              .filter(b => b.text && b.text.trim()),
+          }))
+          .filter(e => e.company && e.bullets.length > 0),
         projects: form.projects
-          .filter(p => p.name)
-          .map((proj, index) => ({
-            index,
+          .map((proj, projIndex) => ({
+            index: projIndex,
             name: proj.name,
             role: proj.role || '',
             bullets: proj.bullets
-              .filter(b => b && b.trim())
-              .map((text, bulletIndex) => ({ index: bulletIndex, text })),
-          })),
+              .map((text, bulletIndex) => ({ index: bulletIndex, text }))
+              .filter(b => b.text && b.text.trim()),
+          }))
+          .filter(p => p.name && p.bullets.length > 0),
       };
 
       const result = await api.rewriteSuggestions({
