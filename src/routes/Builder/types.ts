@@ -41,3 +41,45 @@ export interface AIRewriteResponse {
     reason: string;
   }>;
 }
+
+// ============================================
+// AI 对话式修改相关类型定义
+// ============================================
+
+// 消息状态
+export type MessageStatus = 'sending' | 'sent' | 'error';
+
+// 聊天消息
+export interface ChatMessageData {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  suggestion?: EditSuggestion;
+  status: MessageStatus;
+  timestamp: number;
+  error?: string;  // 错误信息（当 status 为 error 时）
+}
+
+// 修改建议（对话中的）
+export interface EditSuggestion {
+  id: string;
+  path: string;           // 如 "experience.0.bullets.1"
+  original: string;       // 原文
+  suggested: string;      // 建议修改
+  reason: string;         // 修改原因
+  status: SuggestionStatus;
+}
+
+// 对话历史项（发送给 API）
+export interface ChatHistoryItem {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+// 快捷操作模板
+export interface QuickActionTemplate {
+  id: string;
+  label: string;
+  template: string;
+  icon?: string;
+}

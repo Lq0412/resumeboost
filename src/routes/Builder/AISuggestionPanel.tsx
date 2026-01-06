@@ -1,7 +1,12 @@
 /**
- * AI 建议面板 - 显示在右侧，列出所有建议
+ * AI 建议面板 - 显示在右侧，支持"建议"和"对话"两种模式
  */
-import type { AISuggestion } from './types';
+import React from 'react';
+import type { AISuggestion, EditSuggestion } from './types';
+import { AIChatPanel } from './AIChatPanel';
+import type { ChatContext } from './useChatState';
+
+type AIMode = 'suggestions' | 'chat';
 
 interface AISuggestionPanelProps {
   suggestions: AISuggestion[];
@@ -15,6 +20,9 @@ interface AISuggestionPanelProps {
   onRejectAll: () => void;
   onLocate: (suggestion: AISuggestion) => void;
   onClose: () => void;
+  // 对话模式需要的 props
+  resumeData?: ChatContext['resumeData'];
+  onApplyChatSuggestion?: (suggestion: EditSuggestion) => void;
 }
 
 export function AISuggestionPanel({
@@ -29,13 +37,67 @@ export function AISuggestionPanel({
   onRejectAll,
   onLocate,
   onClose,
+  resumeData,
+  onApplyChatSuggestion,
 }: AISuggestionPanelProps) {
+  const [mode, setMode] = React.useState<AIMode>('suggestions');
   const pendingCount = suggestions.filter(s => s.status === 'pending').length;
   const acceptedCount = suggestions.filter(s => s.status === 'accepted').length;
   const rejectedCount = suggestions.filter(s => s.status === 'rejected').length;
 
+  // 如果是对话模式，渲染 AIChatPanel
+  if (mode === 'chat' && resumeData && onApplyChatSuggestion) {
+    return (
+      <div className="h-full flex flex-col bg-gray-800 text-gray-100">
+        {/* Tab 导航 */}
+        <div className="flex border-b border-gray-700">
+          <button
+            onClick={() => setMode('suggestions')}
+            className="flex-1 px-3 py-2 text-xs font-medium text-gray-400 hover:text-gray-200 transition-colors"
+          >
+            ✨ 建议
+          </button>
+          <button
+            onClick={() => setMode('chat')}
+            className="flex-1 px-3 py-2 text-xs font-medium text-white bg-gray-700 border-b-2 border-blue-500"
+          >
+            💬 对话
+          </button>
+        </div>
+        
+        {/* 对话面板内容 */}
+        <div className="flex-1 overflow-hidden">
+          <AIChatPanel
+            resumeData={resumeData}
+            jdText={jdText}
+            onApplySuggestion={onApplyChatSuggestion}
+            onClose={onClose}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="h-full flex flex-col bg-gray-800 text-gray-100">
+      {/* Tab 导航 */}
+      {resumeData && onApplyChatSuggestion && (
+        <div className="flex border-b border-gray-700">
+          <button
+            onClick={() => setMode('suggestions')}
+            className="flex-1 px-3 py-2 text-xs font-medium text-white bg-gray-700 border-b-2 border-blue-500"
+          >
+            ✨ 建议
+          </button>
+          <button
+            onClick={() => setMode('chat')}
+            className="flex-1 px-3 py-2 text-xs font-medium text-gray-400 hover:text-gray-200 transition-colors"
+          >
+            💬 对话
+          </button>
+        </div>
+      )}
+
       {/* 头部 */}
       <div className="p-3 border-b border-gray-700 flex items-center justify-between">
         <h3 className="text-sm font-medium flex items-center gap-2">

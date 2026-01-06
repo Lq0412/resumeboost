@@ -1,6 +1,6 @@
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
-import { formatTime, A4_WIDTH, A4_HEIGHT } from './utils';
+import { formatTime } from './utils';
 import type { useBuilderForm } from './useBuilderForm';
 
 type DensityMode = 'normal' | 'compact' | 'tight';

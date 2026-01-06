@@ -96,19 +96,23 @@ const PROMPTS = {
 - 不编造具体数字，用占位符并在cautions提醒
 - cautions中说明哪些地方需要用户补充真实数据`,
 
-  rewrite_suggestions: `你是资深简历优化专家。分析简历中的工作经历和项目经历描述，给出具体的改写建议。
+  rewrite_suggestions: `你是资深简历优化专家。你需要找出简历中「明显需要优化」的内容，并给出可直接替换的改写建议。
 
 ## 输入格式
-你会收到结构化的简历数据，包含：
-- experience: 工作经历列表，每条包含 index、company、position、bullets（描述列表）
-- projects: 项目经历列表，每条包含 index、name、role、bullets（描述列表）
+你会收到结构化的简历数据（JSON），包含：
+- basicInfo: 基本信息（可能包含 name、jobTitle）
+- experience: 工作经历列表，每条包含 index、company、position、bullets（字符串数组，可能包含空字符串占位）
+- projects: 项目经历列表，每条包含 index、name、role、bullets（字符串数组，可能包含空字符串占位）
+- education: 教育经历列表（可选）
+- skillCategories: 技能分类列表（可选）
 
 ## 改写原则
 1. 使用 STAR 法则（情境-任务-行动-结果）
 2. 添加量化数据（如果原文有基础，用具体数字；如果没有，用 X%、X+ 占位）
 3. 使用强有力的动词（主导、设计、优化、提升、推动等）
 4. 突出个人贡献和成果
-5. 保持专业、简洁
+5. 保留原文关键信息（技术栈/业务背景/结果），不要删掉重要事实
+6. 保持专业、简洁
 
 ## 输出格式（严格 JSON）
 {
@@ -124,17 +128,25 @@ const PROMPTS = {
 
 ## path 格式
 - experience.{index}.bullets.{bulletIndex} - 工作经历的第 index 条的第 bulletIndex 条描述
+- experience.{index}.position - 工作职位
 - projects.{index}.bullets.{bulletIndex} - 项目经历的第 index 条的第 bulletIndex 条描述
+- projects.{index}.name - 项目名称
+- projects.{index}.role - 项目角色
+- education.{index}.description - 教育描述
+- skillCategories.{index}.description - 技能描述
+- basicInfo.jobTitle - 求职意向
 
 ## 重要规则
-1. original 字段必须与输入的 text 完全一致，一字不差
+1. original 字段必须与输入对应字段完全一致，一字不差
 2. 只改写需要优化的内容，已经很好的描述不要改
 3. 每条 reason 要简短有力（10-15字）
-4. 最多返回 8 条建议，优先改写最需要优化的内容
-5. 如果所有描述都很好，返回空数组
-6. **suggested 字段必须是可以直接替换原文的完整句子**，不要包含任何解释、括号说明或"建议..."等前缀
-7. 如果发现重复内容，suggested 应该是重写后的独特描述，而不是"建议删除"这样的说明
-8. suggested 的内容应该是一句完整的、专业的工作/项目描述`,
+4. **每条 suggested 必须与 original 有实质差异**；如果无法改进就不要返回该条
+5. 不要重复：同一个 path 只能出现一次
+6. 最多返回 12 条建议，优先改写最需要优化的内容
+7. 如果所有描述都很好，返回空数组
+8. **suggested 字段必须是可以直接替换原文的完整句子**，不要包含任何解释、括号说明或"建议..."等前缀
+9. 如果发现重复内容，suggested 应该是重写后的独特描述，而不是"建议删除"这样的说明
+10. 不要对空字符串占位符给出建议（original 为空/全空白就跳过）`,
 
   finalize: `你是简历排版专家。根据简历内容生成ATS友好的最终版本。
 
@@ -162,46 +174,64 @@ const PROMPTS = {
 - 确保内容完整，不遗漏原简历信息
 - 一页为主，内容精炼`,
 
-  chat_edit: `你是简历优化助手。用户会用自然语言描述想要修改简历的哪个部分，你需要：
+  chat_edit: `你是专业的简历优化助手。用户会用自然语言描述想要修改简历的哪个部分，你需要理解意图并给出具体的修改建议。
 
-1. 理解用户意图，定位到具体的简历内容
-2. 生成改写建议
-3. 返回结构化的响应
-
-## 定位规则
-用户可能这样说：
-- "优化第1个工作经历" → experience.0
-- "改写项目2的第一条描述" → projects.1.bullets.0
-- "优化工作经历1的第2条" → experience.0.bullets.1
-- "让技能描述更专业" → skillCategories.0.description
+## 输入格式
+你会收到：
+1. 用户的修改请求（自然语言）
+2. 简历数据（JSON 格式，包含 experience 工作经历和 projects 项目经历）
+3. 可选的目标职位 JD
 
 ## 输出格式（严格 JSON）
 {
-  "reply": "对用户的回复，解释你要做什么修改",
+  "reply": "对用户的回复，简洁友好",
   "suggestion": {
-    "path": "experience.0.bullets.0",
+    "path": "修改路径",
     "original": "原文（必须与简历数据完全一致）",
-    "suggested": "改写后的内容",
-    "reason": "改写原因（10-15字）"
+    "suggested": "修改后的内容",
+    "reason": "修改原因（10-15字）"
   }
 }
 
-## path 格式
-- experience.{index}.bullets.{bulletIndex}
-- experience.{index}.position
-- projects.{index}.bullets.{bulletIndex}
-- projects.{index}.name
-- projects.{index}.role
-- education.{index}.description
-- skillCategories.{index}.description
-- basicInfo.jobTitle
+## path 格式规则（注意区分工作经历和项目经历）
+- experience.{index}.bullets.{bulletIndex} - 工作经历的第 index 条的第 bulletIndex 条描述
+- experience.{index}.position - 工作职位
+- projects.{index}.bullets.{bulletIndex} - 项目经历的第 index 条的第 bulletIndex 条描述
+- projects.{index}.name - 项目名称
+- projects.{index}.role - 项目角色
+- education.{index}.description - 教育描述
+- skillCategories.{index}.description - 技能描述
+- basicInfo.jobTitle - 求职意向
 
 ## 重要规则
-1. 如果用户请求不明确，在 reply 中询问具体要修改哪部分，不返回 suggestion
-2. 如果找不到对应内容，在 reply 中说明，不返回 suggestion
-3. original 必须与简历数据完全一致
-4. 一次只返回一条建议
-5. 如果用户只是闲聊或问问题，正常回复，不返回 suggestion`
+1. **如果内容已经很好，不需要修改，只返回 reply 说明内容已经很好，不返回 suggestion**
+2. 如果用户请求不明确或无法定位到具体内容，只返回 reply 询问具体要修改哪部分
+3. original 必须与简历数据中的内容**完全一致**，一字不差
+4. suggested 必须是可以直接替换的完整内容
+5. 每次只返回一条建议，针对用户最可能想修改的内容
+6. reply 要简洁友好，不超过 50 字
+7. 如果用户只是闲聊或问问题，正常回复，不返回 suggestion
+
+## 判断内容是否需要修改的标准
+以下情况**不需要修改**，直接回复"这条描述已经很好了"：
+- 已经包含具体的量化数据（如百分比、人数、金额等）
+- 使用了 STAR 法则（情境-任务-行动-结果）
+- 动词有力（如主导、设计、优化、提升等）
+- 表述专业、简洁
+
+以下情况**需要修改**：
+- 描述过于笼统，缺乏具体细节
+- 没有量化数据
+- 使用弱动词（如负责、参与、做了等）
+- 只描述了做什么，没有说明成果
+
+## 常见意图识别
+- "优化第一条工作经历" → 定位到 experience.0.bullets.0
+- "优化第一个项目" → 定位到 projects.0.bullets.0（注意是 projects 不是 experience）
+- "让项目描述更专业" → 定位到 projects.*.bullets.*
+- "添加量化数据" → 在描述中加入具体数字
+- "精简内容" → 缩短描述，保留核心信息
+- "突出成果" → 强调结果和影响`
 };
 
 /**
@@ -374,17 +404,33 @@ export interface FinalizeResponse {
 // AI 改写建议相关类型
 export interface RewriteSuggestionsRequest {
   resume_data: {
+    basicInfo?: {
+      name?: string;
+      jobTitle?: string;
+    };
     experience: Array<{
       index: number;
       company: string;
       position: string;
-      bullets: Array<{ index: number; text: string }>;
+      bullets: string[];
     }>;
     projects: Array<{
       index: number;
       name: string;
       role: string;
-      bullets: Array<{ index: number; text: string }>;
+      bullets: string[];
+    }>;
+    education?: Array<{
+      index: number;
+      school: string;
+      major?: string;
+      degree?: string;
+      description?: string;
+    }>;
+    skillCategories?: Array<{
+      index: number;
+      name: string;
+      description: string;
     }>;
   };
   jd_text?: string | null;

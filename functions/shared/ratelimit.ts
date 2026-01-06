@@ -11,7 +11,9 @@ const RATE_LIMITS: Record<string, RateLimitConfig> = {
   '/api/analyze': { limit: 10, windowMs: 60000 },
   '/api/match': { limit: 20, windowMs: 60000 },
   '/api/rewrite': { limit: 20, windowMs: 60000 },
+  '/api/rewrite-suggestions': { limit: 20, windowMs: 60000 },
   '/api/finalize': { limit: 10, windowMs: 60000 },
+  '/api/chat-edit': { limit: 30, windowMs: 60000 },
 };
 
 // 内存存储（边缘函数实例级别）

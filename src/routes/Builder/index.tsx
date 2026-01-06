@@ -1,5 +1,5 @@
 /*  */import { useNavigate } from 'react-router-dom';
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useMemo } from 'react';
 import { useBuilderForm } from './useBuilderForm';
 import { formToMarkdown } from './formToMarkdown';
 import { showToast } from '../../components';
@@ -11,7 +11,8 @@ import { useAutoResizeTextarea, useDragResize } from './hooks';
 import { exportToPDF } from './pdfExport';
 import { MAX_PHOTO_SIZE, MIN_RESUME_LENGTH } from './utils';
 import { AISuggestionPanel } from './AISuggestionPanel';
-import type { AISuggestion } from './types';
+import { useUndoStack } from './useUndoStack';
+import type { AISuggestion, EditSuggestion } from './types';
 
 type DensityMode = 'normal' | 'compact' | 'tight';
 type EditTab = 'basic' | 'edu' | 'skill' | 'work' | 'project' | 'award';
@@ -46,6 +47,9 @@ export default function Builder() {
   const [isDraggingRight, setIsDraggingRight] = useState(false);
 
   const { handleResize: handleTextareaResize, handleFocus: handleTextareaFocus } = useAutoResizeTextarea();
+  
+  // 撤销栈
+  const { pushState, popState, canUndo } = useUndoStack<typeof form>();
   
   const {
     form,
@@ -103,6 +107,157 @@ export default function Builder() {
     };
   }, []);
 
+  const normalizeForCompare = useCallback((text: string) => text.replace(/\s+/g, ' ').trim(), []);
+
+  type ResolvedEditTarget =
+    | { kind: 'experienceBullet'; id: string; bulletIndex: number }
+    | { kind: 'projectBullet'; id: string; bulletIndex: number }
+    | { kind: 'experiencePosition'; id: string }
+    | { kind: 'projectName'; id: string }
+    | { kind: 'projectRole'; id: string }
+    | { kind: 'educationDescription'; id: string }
+    | { kind: 'skillCategoryDescription'; id: string }
+    | { kind: 'basicInfoJobTitle' };
+
+  const resolveSuggestionTarget = useCallback((suggestion: { path: string; original: string }): ResolvedEditTarget | null => {
+    const parts = suggestion.path.split('.');
+    const sectionKey = parts[0];
+    const itemIndex = parts[1] ? parseInt(parts[1], 10) : undefined;
+    const field = parts[2];
+    const bulletIndex = parts[3] ? parseInt(parts[3], 10) : undefined;
+
+    const findBulletIndex = (bullets: string[], preferredIndex: number | undefined): number | null => {
+      if (preferredIndex !== undefined && !Number.isNaN(preferredIndex) && preferredIndex >= 0 && preferredIndex < bullets.length) {
+        const preferred = bullets[preferredIndex] ?? '';
+        if (preferred === suggestion.original) return preferredIndex;
+        if (normalizeForCompare(preferred) === normalizeForCompare(suggestion.original)) return preferredIndex;
+      }
+
+      const exactIndex = bullets.findIndex(b => b === suggestion.original);
+      if (exactIndex !== -1) return exactIndex;
+
+      const originalNorm = normalizeForCompare(suggestion.original);
+      if (!originalNorm) return null;
+
+      const normalizedMatches = bullets
+        .map((b, i) => ({ i, norm: normalizeForCompare(b) }))
+        .filter((m) => m.norm === originalNorm);
+
+      if (normalizedMatches.length === 1) return normalizedMatches[0].i;
+      return null;
+    };
+
+    const matchesField = (current: string | undefined): boolean => {
+      if (current === undefined) return false;
+      if (current === suggestion.original) return true;
+      return normalizeForCompare(current) === normalizeForCompare(suggestion.original);
+    };
+
+    if (sectionKey === 'experience') {
+      if (itemIndex === undefined || Number.isNaN(itemIndex)) return null;
+      const exp = form.experience[itemIndex];
+      if (!exp) return null;
+
+      if (field === 'bullets') {
+        const resolvedBulletIndex = findBulletIndex(exp.bullets, bulletIndex);
+        if (resolvedBulletIndex === null) return null;
+        return { kind: 'experienceBullet', id: exp.id, bulletIndex: resolvedBulletIndex };
+      }
+
+      if (field === 'position' && matchesField(exp.position)) {
+        return { kind: 'experiencePosition', id: exp.id };
+      }
+
+      return null;
+    }
+
+    if (sectionKey === 'projects') {
+      if (itemIndex === undefined || Number.isNaN(itemIndex)) return null;
+      const proj = form.projects[itemIndex];
+      if (!proj) return null;
+
+      if (field === 'bullets') {
+        const resolvedBulletIndex = findBulletIndex(proj.bullets, bulletIndex);
+        if (resolvedBulletIndex === null) return null;
+        return { kind: 'projectBullet', id: proj.id, bulletIndex: resolvedBulletIndex };
+      }
+
+      if (field === 'name' && matchesField(proj.name)) {
+        return { kind: 'projectName', id: proj.id };
+      }
+
+      if (field === 'role' && matchesField(proj.role || '')) {
+        return { kind: 'projectRole', id: proj.id };
+      }
+
+      return null;
+    }
+
+    if (sectionKey === 'education') {
+      if (itemIndex === undefined || Number.isNaN(itemIndex)) return null;
+      const edu = form.education[itemIndex];
+      if (!edu) return null;
+
+      if (field === 'description' && matchesField(edu.description || '')) {
+        return { kind: 'educationDescription', id: edu.id };
+      }
+
+      return null;
+    }
+
+    if (sectionKey === 'skillCategories') {
+      if (itemIndex === undefined || Number.isNaN(itemIndex)) return null;
+      const category = form.skillCategories?.[itemIndex];
+      if (!category) return null;
+
+      if (field === 'description' && matchesField(category.description)) {
+        return { kind: 'skillCategoryDescription', id: category.id };
+      }
+
+      return null;
+    }
+
+    if (sectionKey === 'basicInfo' && field === 'jobTitle' && matchesField(form.basicInfo.jobTitle || '')) {
+      return { kind: 'basicInfoJobTitle' };
+    }
+
+    return null;
+  }, [form, normalizeForCompare]);
+
+  const applyResolvedTarget = useCallback((target: ResolvedEditTarget, suggested: string): void => {
+    if (target.kind === 'experienceBullet') {
+      updateExperienceBullet(target.id, target.bulletIndex, suggested);
+      return;
+    }
+    if (target.kind === 'projectBullet') {
+      updateProjectBullet(target.id, target.bulletIndex, suggested);
+      return;
+    }
+    if (target.kind === 'experiencePosition') {
+      updateExperience(target.id, 'position', suggested);
+      return;
+    }
+    if (target.kind === 'projectName') {
+      updateProject(target.id, 'name', suggested);
+      return;
+    }
+    if (target.kind === 'projectRole') {
+      updateProject(target.id, 'role', suggested);
+      return;
+    }
+    if (target.kind === 'educationDescription') {
+      updateEducation(target.id, 'description', suggested);
+      return;
+    }
+    if (target.kind === 'skillCategoryDescription') {
+      updateSkillCategory(target.id, 'description', suggested);
+      return;
+    }
+    if (target.kind === 'basicInfoJobTitle') {
+      updateBasicInfo('jobTitle', suggested);
+    }
+  }, [updateEducation, updateBasicInfo, updateExperience, updateExperienceBullet, updateProject, updateProjectBullet, updateSkillCategory]);
+
   // AI 智能改写分析
   const handleAnalyze = async () => {
     const markdown = formToMarkdown(form);
@@ -116,26 +271,37 @@ export default function Builder() {
     try {
       // 构建结构化的简历数据，保留原始索引以便正确匹配
       const resumeData = {
+        basicInfo: {
+          name: form.basicInfo.name || '',
+          jobTitle: form.basicInfo.jobTitle || '',
+        },
         experience: form.experience
           .map((exp, expIndex) => ({
             index: expIndex,
             company: exp.company,
             position: exp.position,
-            bullets: exp.bullets
-              .map((text, bulletIndex) => ({ index: bulletIndex, text }))
-              .filter(b => b.text && b.text.trim()),
-          }))
-          .filter(e => e.company && e.bullets.length > 0),
+            bullets: exp.bullets.map(b => b ?? ''),
+          })),
         projects: form.projects
           .map((proj, projIndex) => ({
             index: projIndex,
             name: proj.name,
             role: proj.role || '',
-            bullets: proj.bullets
-              .map((text, bulletIndex) => ({ index: bulletIndex, text }))
-              .filter(b => b.text && b.text.trim()),
-          }))
-          .filter(p => p.name && p.bullets.length > 0),
+            bullets: proj.bullets.map(b => b ?? ''),
+          })),
+        education: form.education
+          .map((edu, eduIndex) => ({
+            index: eduIndex,
+            school: edu.school,
+            major: edu.major || '',
+            degree: edu.degree || '',
+            description: edu.description || '',
+          })),
+        skillCategories: form.skillCategories?.map((cat, idx) => ({
+          index: idx,
+          name: cat.name,
+          description: cat.description,
+        })) || [],
       };
 
       const result = await api.rewriteSuggestions({
@@ -144,15 +310,26 @@ export default function Builder() {
       });
       
       // 转换为 AISuggestion 格式
-      const suggestions: AISuggestion[] = (result.suggestions || []).map((s, index) => ({
-        id: `suggestion-${index}-${Date.now()}`,
-        path: s.path,
-        ...parseSuggestionPath(s.path),
-        original: s.original,
-        suggested: s.suggested,
-        reason: s.reason,
-        status: 'pending' as const,
-      }));
+      const now = Date.now();
+      const seen = new Set<string>();
+      const suggestions: AISuggestion[] = (result.suggestions || [])
+        .filter((s) => normalizeForCompare(s.original) && normalizeForCompare(s.suggested))
+        .filter((s) => normalizeForCompare(s.original) !== normalizeForCompare(s.suggested))
+        .filter((s) => {
+          const key = `${s.path}|${normalizeForCompare(s.suggested)}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        })
+        .map((s, index) => ({
+          id: `suggestion-${index}-${now}`,
+          path: s.path,
+          ...parseSuggestionPath(s.path),
+          original: s.original,
+          suggested: s.suggested,
+          reason: s.reason,
+          status: 'pending' as const,
+        }));
       
       setAiSuggestions(suggestions);
       
@@ -173,30 +350,13 @@ export default function Builder() {
     const suggestion = aiSuggestions.find(s => s.id === id);
     if (!suggestion || suggestion.status !== 'pending') return;
     
-    // 应用修改到表单
-    const parts = suggestion.path.split('.');
-    const sectionKey = parts[0];
-    const itemIndex = parts[1] ? parseInt(parts[1]) : 0;
-    const field = parts[2];
-    const bulletIndex = parts[3] ? parseInt(parts[3]) : undefined;
-    
-    if (sectionKey === 'experience' && field === 'bullets' && bulletIndex !== undefined) {
-      updateExperienceBullet(form.experience[itemIndex]?.id, bulletIndex, suggestion.suggested);
-    } else if (sectionKey === 'projects' && field === 'bullets' && bulletIndex !== undefined) {
-      updateProjectBullet(form.projects[itemIndex]?.id, bulletIndex, suggestion.suggested);
-    } else if (sectionKey === 'experience' && field === 'position') {
-      updateExperience(form.experience[itemIndex]?.id, 'position', suggestion.suggested);
-    } else if (sectionKey === 'projects' && field === 'name') {
-      updateProject(form.projects[itemIndex]?.id, 'name', suggestion.suggested);
-    } else if (sectionKey === 'projects' && field === 'role') {
-      updateProject(form.projects[itemIndex]?.id, 'role', suggestion.suggested);
-    } else if (sectionKey === 'education' && field === 'description') {
-      updateEducation(form.education[itemIndex]?.id, 'description', suggestion.suggested);
-    } else if (sectionKey === 'skillCategories' && field === 'description') {
-      updateSkillCategory(form.skillCategories?.[itemIndex]?.id || '', 'description', suggestion.suggested);
-    } else if (sectionKey === 'basicInfo' && field === 'jobTitle') {
-      updateBasicInfo('jobTitle', suggestion.suggested);
+    const target = resolveSuggestionTarget(suggestion);
+    if (!target) {
+      showToast('无法应用修改：对应内容已变更，请重新生成建议', 'error');
+      return;
     }
+
+    applyResolvedTarget(target, suggestion.suggested);
     
     // 更新建议状态
     setAiSuggestions(prev => prev.map(s => 
@@ -204,7 +364,7 @@ export default function Builder() {
     ));
     
     showToast('已应用修改', 'success');
-  }, [aiSuggestions, form, updateExperienceBullet, updateProjectBullet, updateExperience, updateProject, updateEducation, updateSkillCategory, updateBasicInfo]);
+  }, [aiSuggestions, applyResolvedTarget, resolveSuggestionTarget]);
 
   // 拒绝单条建议
   const handleRejectSuggestion = useCallback((id: string) => {
@@ -226,6 +386,64 @@ export default function Builder() {
       s.status === 'pending' ? { ...s, status: 'rejected' as const } : s
     ));
   }, []);
+
+  // 构建简历数据上下文（用于 AI 对话）
+  const resumeData = useMemo(() => ({
+    experience: form.experience
+      .map((exp, expIndex) => ({
+        index: expIndex,
+        company: exp.company,
+        position: exp.position,
+        bullets: exp.bullets.map(b => b ?? ''),
+      })),
+    projects: form.projects
+      .map((proj, projIndex) => ({
+        index: projIndex,
+        name: proj.name,
+        role: proj.role || '',
+        bullets: proj.bullets.map(b => b ?? ''),
+      })),
+    education: form.education
+      .map((edu, eduIndex) => ({
+        index: eduIndex,
+        school: edu.school,
+        major: edu.major || '',
+        degree: edu.degree || '',
+        description: edu.description || '',
+      })),
+    skillCategories: form.skillCategories?.map((cat, idx) => ({
+      index: idx,
+      name: cat.name,
+      description: cat.description,
+    })) || [],
+    basicInfo: {
+      name: form.basicInfo.name || '',
+      jobTitle: form.basicInfo.jobTitle || '',
+    },
+  }), [form]);
+
+  // 应用对话建议
+  const handleApplyChatSuggestion = useCallback((suggestion: EditSuggestion) => {
+    const target = resolveSuggestionTarget(suggestion);
+    if (!target) {
+      showToast('无法应用修改：对应内容已变更，请重新生成建议', 'error');
+      return;
+    }
+
+    // 保存当前状态到撤销栈
+    pushState(form);
+    applyResolvedTarget(target, suggestion.suggested);
+    showToast('已应用修改', 'success');
+  }, [applyResolvedTarget, form, pushState, resolveSuggestionTarget]);
+
+  // 撤销操作
+  const handleUndo = useCallback(() => {
+    const previousState = popState();
+    if (previousState) {
+      loadForm(previousState);
+      showToast('已撤销', 'success');
+    }
+  }, [popState, loadForm]);
 
   // 定位到建议对应的位置
   const handleLocateSuggestion = useCallback((suggestion: AISuggestion) => {
@@ -323,6 +541,14 @@ export default function Builder() {
           )}
         </div>
         <div className="flex items-center gap-2">
+          {canUndo && (
+            <button 
+              onClick={handleUndo} 
+              className="px-3 py-1.5 text-xs text-gray-700 bg-white hover:bg-gray-50 border border-gray-300 rounded-md transition-all shadow-sm hover:shadow"
+            >
+              ↩️ 撤销
+            </button>
+          )}
           <button 
             onClick={handleSaveDraft} 
             className="px-3 py-1.5 text-xs text-gray-700 bg-white hover:bg-gray-50 border border-gray-300 rounded-md transition-all shadow-sm hover:shadow"
@@ -672,6 +898,8 @@ export default function Builder() {
               onRejectAll={handleRejectAll}
               onLocate={handleLocateSuggestion}
               onClose={() => setShowAISidebar(false)}
+              resumeData={resumeData}
+              onApplyChatSuggestion={handleApplyChatSuggestion}
             />
           </div>
         )}
