@@ -108,6 +108,46 @@ export default function Builder() {
   }, []);
 
   const normalizeForCompare = useCallback((text: string) => text.replace(/\s+/g, ' ').trim(), []);
+  const getChatAISuggestionId = useCallback((chatSuggestionId: string) => `chat-suggestion-${chatSuggestionId}`, []);
+
+  const upsertChatSuggestionToAISuggestions = useCallback((suggestion: EditSuggestion, status: AISuggestion['status']) => {
+    const originalNorm = normalizeForCompare(suggestion.original);
+    const suggestedNorm = normalizeForCompare(suggestion.suggested);
+    if (!originalNorm || !suggestedNorm || originalNorm === suggestedNorm) return;
+
+    const id = getChatAISuggestionId(suggestion.id);
+    const aiSuggestion: AISuggestion = {
+      id,
+      path: suggestion.path,
+      ...parseSuggestionPath(suggestion.path),
+      original: suggestion.original,
+      suggested: suggestion.suggested,
+      reason: suggestion.reason,
+      status,
+    };
+
+    setAiSuggestions(prev => {
+      const withoutSamePathPending = prev.filter(s => !(s.status === 'pending' && s.path === aiSuggestion.path && s.id !== id));
+      const existingIndex = withoutSamePathPending.findIndex(s => s.id === id);
+
+      if (existingIndex === -1) {
+        return [aiSuggestion, ...withoutSamePathPending];
+      }
+
+      const next = [...withoutSamePathPending];
+      next[existingIndex] = { ...next[existingIndex], ...aiSuggestion };
+      return next;
+    });
+  }, [getChatAISuggestionId, normalizeForCompare, parseSuggestionPath]);
+
+  const handleRegisterChatSuggestion = useCallback((suggestion: EditSuggestion) => {
+    upsertChatSuggestionToAISuggestions(suggestion, 'pending');
+  }, [upsertChatSuggestionToAISuggestions]);
+
+  const handleRejectChatSuggestion = useCallback((suggestionId: string) => {
+    const id = getChatAISuggestionId(suggestionId);
+    setAiSuggestions(prev => prev.map(s => (s.id === id ? { ...s, status: 'rejected' as const } : s)));
+  }, [getChatAISuggestionId]);
 
   type ResolvedEditTarget =
     | { kind: 'experienceBullet'; id: string; bulletIndex: number }
@@ -424,6 +464,9 @@ export default function Builder() {
 
   // 应用对话建议
   const handleApplyChatSuggestion = useCallback((suggestion: EditSuggestion) => {
+    // 同步到 AI 建议列表，确保中间预览可以定位并高亮
+    upsertChatSuggestionToAISuggestions(suggestion, 'pending');
+
     const target = resolveSuggestionTarget(suggestion);
     if (!target) {
       showToast('无法应用修改：对应内容已变更，请重新生成建议', 'error');
@@ -433,8 +476,9 @@ export default function Builder() {
     // 保存当前状态到撤销栈
     pushState(form);
     applyResolvedTarget(target, suggestion.suggested);
+    upsertChatSuggestionToAISuggestions(suggestion, 'accepted');
     showToast('已应用修改', 'success');
-  }, [applyResolvedTarget, form, pushState, resolveSuggestionTarget]);
+  }, [applyResolvedTarget, form, pushState, resolveSuggestionTarget, upsertChatSuggestionToAISuggestions]);
 
   // 撤销操作
   const handleUndo = useCallback(() => {
@@ -900,6 +944,8 @@ export default function Builder() {
               onClose={() => setShowAISidebar(false)}
               resumeData={resumeData}
               onApplyChatSuggestion={handleApplyChatSuggestion}
+              onRegisterChatSuggestion={handleRegisterChatSuggestion}
+              onRejectChatSuggestion={handleRejectChatSuggestion}
             />
           </div>
         )}

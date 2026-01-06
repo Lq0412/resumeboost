@@ -32,6 +32,13 @@
 - **批量操作**：支持全部接受/拒绝，高效处理
 - **JD 匹配**：输入职位描述，针对性优化简历内容
 
+### 💬 AI 对话式编辑 (NEW)
+- **自然语言交互**：用日常语言描述修改需求，如"让第一条工作经历更突出成果"
+- **智能定位**：AI 自动理解"第一条工作经历"、"项目2的描述"等引用
+- **快捷操作**：预设常用操作按钮，一键优化工作经历、添加量化数据
+- **上下文感知**：AI 记住对话历史，支持连续对话
+- **撤销支持**：不满意可一键撤销修改
+
 ### 🔒 隐私优先
 - **本地优先**：数据仅存储在浏览器，不上传服务器
 - **自动脱敏**：手机号、邮箱等敏感信息自动替换
@@ -114,12 +121,18 @@ resumeboost/
 │   │   ├── api.ts           # API 客户端 + DeepSeek 直连
 │   │   ├── masking.ts       # 隐私脱敏
 │   │   └── validation.ts    # 输入验证
-│   └── routes/
+│   ├── routes/
 │       ├── Landing/         # 首页
 │       ├── Builder/         # 简历编辑器 ⭐
 │       │   ├── index.tsx    # 主组件
 │       │   ├── EditablePreview.tsx  # 可编辑预览
 │       │   ├── AISuggestionPanel.tsx # AI 建议面板
+│       │   ├── AIChatPanel.tsx      # AI 对话面板 ⭐
+│       │   ├── ChatMessage.tsx      # 对话消息组件
+│       │   ├── ChatInput.tsx        # 对话输入框
+│       │   ├── QuickActions.tsx     # 快捷操作按钮
+│       │   ├── useChatState.ts      # 对话状态管理
+│       │   ├── useUndoStack.ts      # 撤销栈管理
 │       │   ├── AIDiffBlock.tsx      # Diff 显示组件
 │       │   └── ...
 │       └── Workspace/       # AI 工作台
@@ -128,13 +141,24 @@ resumeboost/
 │   │   ├── analyze.ts       # 简历诊断
 │   │   ├── match.ts         # JD 匹配
 │   │   ├── rewrite.ts       # 经历改写
-│   │   ├── rewrite-suggestions.ts  # AI 建议 ⭐
+│   │   ├── rewrite-suggestions.ts  # AI 建议
+│   │   ├── chat-edit.ts     # 对话式编辑 ⭐
 │   │   └── finalize.ts      # 终稿生成
 │   └── shared/              # 共享模块
 └── esa.config.json          # ESA Pages 配置
 ```
 
 ## 🎯 核心功能实现
+
+### AI 对话式编辑流程
+
+```
+1. 用户在对话框输入自然语言，如"让第一条工作经历更突出成果"
+2. AI 理解意图，定位到 experience.0.bullets
+3. AI 返回修改建议，包含原文和建议内容
+4. 用户点击 [接受] 应用修改，或 [拒绝] 放弃
+5. 支持撤销，可恢复到修改前状态
+```
 
 ### AI 建议流程
 
@@ -165,6 +189,10 @@ resumeboost/
 - [x] AI 智能改写建议
 - [x] Diff 内联显示
 - [x] 预览区直接编辑
+- [x] AI 对话式编辑
+- [x] 快捷操作按钮
+- [x] 撤销/重做支持
+- [x] 页面溢出智能提示
 - [ ] 多模板支持
 - [ ] 简历评分系统
 - [ ] 导出 Word 格式

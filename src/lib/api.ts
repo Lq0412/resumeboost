@@ -12,6 +12,33 @@ const USE_MOCK = false; // 设为 true 使用模拟数据，false 直接调用 D
 const DEEPSEEK_API_KEY = import.meta.env.VITE_DEEPSEEK_API_KEY || '';
 const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
 
+function buildChatEditResumeOverview(resumeData: ChatEditRequest['resume_data']): string {
+  const experience = resumeData.experience || [];
+  const projects = resumeData.projects || [];
+
+  const isNonEmpty = (value: string | undefined): boolean => Boolean(value && value.trim());
+  const countNonEmptyBullets = (bullets: string[] | undefined): number => (bullets || []).filter((b) => isNonEmpty(b)).length;
+
+  const experienceNonEmpty = experience.filter((e) =>
+    isNonEmpty(e.company) || isNonEmpty(e.position) || countNonEmptyBullets(e.bullets) > 0
+  ).length;
+  const projectsNonEmpty = projects.filter((p) =>
+    isNonEmpty(p.name) || isNonEmpty(p.role) || countNonEmptyBullets(p.bullets) > 0
+  ).length;
+
+  const experienceIndexList = experience
+    .map((e) => `${e.index}: ${(e.company || '').trim() || '(empty)'} | ${(e.position || '').trim() || '(empty)'}`)
+    .join('\n');
+  const projectIndexList = projects
+    .map((p) => `${p.index}: ${(p.name || '').trim() || '(empty)'} | ${(p.role || '').trim() || '(empty)'}`)
+    .join('\n');
+
+  let overview = `Overview: experience ${experienceNonEmpty}/${experience.length}, projects ${projectsNonEmpty}/${projects.length}\n`;
+  if (experience.length > 0) overview += `Experience index:\n${experienceIndexList}\n\n`;
+  if (projects.length > 0) overview += `Projects index:\n${projectIndexList}\n\n`;
+  return overview;
+}
+
 // Prompts - 优化版，更精准、更有针对性
 const PROMPTS = {
   analyze: `你是资深HR和简历优化专家，拥有10年招聘经验。请对简历进行深度诊断。
@@ -182,6 +209,10 @@ const PROMPTS = {
 2. 简历数据（JSON 格式，包含 experience 工作经历和 projects 项目经历）
 3. 可选的目标职位 JD
 
+补充说明：experience/projects 的 bullets 是字符串数组，可能包含空字符串占位；bulletIndex 指该数组的下标（从 0 开始），不要对空字符串返回建议。
+补充说明：experience/projects 通常有多条，请完整阅读数组内容后再回答；不要在未确认的情况下说“只有一条工作经历/项目经历”。
+当用户明确说“第 N 条/第二条/第2条”等序号时，必须优先定位到对应 index（第二条=1），不要默认第 0 条。
+
 ## 输出格式（严格 JSON）
 {
   "reply": "对用户的回复，简洁友好",
@@ -206,11 +237,12 @@ const PROMPTS = {
 ## 重要规则
 1. **如果内容已经很好，不需要修改，只返回 reply 说明内容已经很好，不返回 suggestion**
 2. 如果用户请求不明确或无法定位到具体内容，只返回 reply 询问具体要修改哪部分
-3. original 必须与简历数据中的内容**完全一致**，一字不差
-4. suggested 必须是可以直接替换的完整内容
-5. 每次只返回一条建议，针对用户最可能想修改的内容
-6. reply 要简洁友好，不超过 50 字
-7. 如果用户只是闲聊或问问题，正常回复，不返回 suggestion
+3. 如果用户明确指定了第 N 条工作/项目经历，必须优先按该序号定位，不要默认第一条
+4. original 必须与简历数据中的内容**完全一致**，一字不差
+5. suggested 必须是可以直接替换的完整内容
+6. 每次只返回一条建议，针对用户最可能想修改的内容
+7. reply 要简洁友好，不超过 50 字
+8. 如果用户只是闲聊或问问题，正常回复，不返回 suggestion
 
 ## 判断内容是否需要修改的标准
 以下情况**不需要修改**，直接回复"这条描述已经很好了"：
@@ -257,7 +289,8 @@ async function callDeepSeekDirect<T>(url: string, options: RequestInit): Promise
     }
   } else if (url.includes('/api/chat-edit')) {
     systemPrompt = PROMPTS.chat_edit;
-    userPrompt = `用户请求：${body.message}\n\n简历数据：\n${JSON.stringify(body.resume_data, null, 2)}`;
+    const overview = buildChatEditResumeOverview(body.resume_data as ChatEditRequest['resume_data']);
+    userPrompt = `User request: ${body.message}\n\n${overview}Resume data:\n${JSON.stringify(body.resume_data, null, 2)}`;
     if (body.jd_text) {
       userPrompt += `\n\n目标职位 JD：\n${body.jd_text}`;
     }

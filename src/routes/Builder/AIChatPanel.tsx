@@ -13,6 +13,8 @@ interface AIChatPanelProps {
   resumeData: ChatContext['resumeData'];
   jdText?: string;
   onApplySuggestion: (suggestion: EditSuggestion) => void;
+  onNewSuggestion?: (suggestion: EditSuggestion) => void;
+  onRejectSuggestion?: (suggestionId: string) => void;
   onClose: () => void;
 }
 
@@ -20,9 +22,12 @@ export function AIChatPanel({
   resumeData,
   jdText,
   onApplySuggestion,
+  onNewSuggestion,
+  onRejectSuggestion,
   onClose,
 }: AIChatPanelProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const notifiedSuggestionIdsRef = useRef<Set<string>>(new Set());
   
   const {
     messages,
@@ -36,6 +41,19 @@ export function AIChatPanel({
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // 将对话中的建议同步到外部（用于中间预览高亮）
+  useEffect(() => {
+    if (!onNewSuggestion) return;
+
+    for (const message of messages) {
+      const suggestion = message.suggestion;
+      if (!suggestion) continue;
+      if (notifiedSuggestionIdsRef.current.has(suggestion.id)) continue;
+      notifiedSuggestionIdsRef.current.add(suggestion.id);
+      onNewSuggestion(suggestion);
+    }
+  }, [messages, onNewSuggestion]);
 
   // 构建上下文 - 使用 useMemo 避免每次渲染都创建新对象
   const context: ChatContext = useMemo(() => ({
@@ -61,8 +79,9 @@ export function AIChatPanel({
     if (messageWithSuggestion) {
       updateSuggestionStatus(messageWithSuggestion.id, 'accepted');
     }
+    onNewSuggestion?.(suggestion);
     onApplySuggestion(suggestion);
-  }, [messages, updateSuggestionStatus, onApplySuggestion]);
+  }, [messages, onNewSuggestion, updateSuggestionStatus, onApplySuggestion]);
 
   // 拒绝建议
   const handleReject = useCallback((suggestionId: string) => {
@@ -70,7 +89,8 @@ export function AIChatPanel({
     if (messageWithSuggestion) {
       updateSuggestionStatus(messageWithSuggestion.id, 'rejected');
     }
-  }, [messages, updateSuggestionStatus]);
+    onRejectSuggestion?.(suggestionId);
+  }, [messages, onRejectSuggestion, updateSuggestionStatus]);
 
   // 重试消息
   const handleRetry = useCallback((messageId: string) => {

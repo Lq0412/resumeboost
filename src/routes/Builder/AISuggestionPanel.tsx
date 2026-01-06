@@ -23,6 +23,8 @@ interface AISuggestionPanelProps {
   // 对话模式需要的 props
   resumeData?: ChatContext['resumeData'];
   onApplyChatSuggestion?: (suggestion: EditSuggestion) => void;
+  onRegisterChatSuggestion?: (suggestion: EditSuggestion) => void;
+  onRejectChatSuggestion?: (suggestionId: string) => void;
 }
 
 export function AISuggestionPanel({
@@ -39,6 +41,8 @@ export function AISuggestionPanel({
   onClose,
   resumeData,
   onApplyChatSuggestion,
+  onRegisterChatSuggestion,
+  onRejectChatSuggestion,
 }: AISuggestionPanelProps) {
   const [mode, setMode] = React.useState<AIMode>('suggestions');
   const pendingCount = suggestions.filter(s => s.status === 'pending').length;
@@ -71,6 +75,8 @@ export function AISuggestionPanel({
             resumeData={resumeData}
             jdText={jdText}
             onApplySuggestion={onApplyChatSuggestion}
+            onNewSuggestion={onRegisterChatSuggestion}
+            onRejectSuggestion={onRejectChatSuggestion}
             onClose={onClose}
           />
         </div>

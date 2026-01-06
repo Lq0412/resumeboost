@@ -65,6 +65,8 @@ const SYSTEM_PROMPT = `你是专业的简历优化助手。用户会用自然语
 3. 可选的目标职位 JD
 
 补充说明：experience/projects 的 bullets 是字符串数组，可能包含空字符串占位；bulletIndex 指该数组的下标（从 0 开始），不要对空字符串返回建议。
+补充说明：experience/projects 通常有多条，请完整阅读数组内容后再回答；不要在未确认的情况下说“只有一条工作经历/项目经历”。
+当用户明确说“第 N 条/第二条/第2条”等序号时，必须优先定位到对应 index（第二条=1），不要默认第 0 条。
 
 ## 输出格式（严格 JSON）
 {
@@ -147,8 +149,31 @@ export async function onRequest(context: { request: Request }): Promise<Response
     // 限制消息长度
     const message = body.message.trim().slice(0, 500);
 
+    const experience = Array.isArray(body.resume_data.experience) ? body.resume_data.experience : [];
+    const projects = Array.isArray(body.resume_data.projects) ? body.resume_data.projects : [];
+
+    const isNonEmpty = (value: string | undefined): boolean => Boolean(value && value.trim());
+    const countNonEmptyBullets = (bullets: string[] | undefined): number => (bullets || []).filter((b) => isNonEmpty(b)).length;
+
+    const experienceNonEmpty = experience.filter((e) =>
+      isNonEmpty(e.company) || isNonEmpty(e.position) || countNonEmptyBullets(e.bullets) > 0
+    ).length;
+    const projectsNonEmpty = projects.filter((p) =>
+      isNonEmpty(p.name) || isNonEmpty(p.role) || countNonEmptyBullets(p.bullets) > 0
+    ).length;
+
+    const experienceIndexList = experience
+      .map((e) => `${e.index}: ${(e.company || '').trim() || '(公司未填)'} | ${(e.position || '').trim() || '(岗位未填)'}`)
+      .join('\n');
+    const projectIndexList = projects
+      .map((p) => `${p.index}: ${(p.name || '').trim() || '(项目名未填)'} | ${(p.role || '').trim() || '(角色未填)'}`)
+      .join('\n');
+
     // 构建用户提示
     let userPrompt = `用户请求：${message}\n\n`;
+    userPrompt += `简历概览：工作经历 ${experienceNonEmpty}/${experience.length} 条；项目经历 ${projectsNonEmpty}/${projects.length} 条\n`;
+    if (experience.length > 0) userPrompt += `工作经历索引：\n${experienceIndexList}\n\n`;
+    if (projects.length > 0) userPrompt += `项目经历索引：\n${projectIndexList}\n\n`;
     userPrompt += `简历数据：\n${JSON.stringify(body.resume_data, null, 2)}`;
     
     if (body.jd_text) {
