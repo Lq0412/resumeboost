@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from 'react';
 import { useBuilderForm } from './useBuilderForm';
-import { A4_WIDTH, A4_HEIGHT, densityStyles, formatTime } from './utils';
+import { useContentHeight } from './hooks';
+import { A4_WIDTH, A4_HEIGHT, densityStyles, formatTime, hasResumeContent } from './utils';
 import { EditableField } from './EditableField';
 import { AIDiffBlockMultiline } from './AIDiffBlock';
 import type { AISuggestion } from './types';
@@ -51,7 +52,8 @@ export function EditablePreview({
   const contentRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0.6);
-  const [contentHeight, setContentHeight] = useState(0);
+  const hasContent = hasResumeContent(form);
+  const contentHeight = useContentHeight(contentRef, [densityMode, hasContent]);
   
   const styles = densityStyles[densityMode];
 
@@ -86,42 +88,6 @@ export function EditablePreview({
     return found;
   };
 
-  // 使用 ResizeObserver 监听内容高度变化
-  useEffect(() => {
-    const contentEl = contentRef.current;
-    if (!contentEl) return;
-
-    const updateHeight = () => {
-      // 使用 requestAnimationFrame 确保 DOM 已更新
-      requestAnimationFrame(() => {
-        if (contentRef.current) {
-          const height = contentRef.current.scrollHeight;
-          setContentHeight(height);
-        }
-      });
-    };
-
-    // 初始计算
-    updateHeight();
-
-    // 使用 ResizeObserver 监听大小变化
-    const resizeObserver = new ResizeObserver(updateHeight);
-    resizeObserver.observe(contentEl);
-
-    // 使用 MutationObserver 监听内容变化
-    const mutationObserver = new MutationObserver(updateHeight);
-    mutationObserver.observe(contentEl, { 
-      childList: true, 
-      subtree: true, 
-      characterData: true 
-    });
-
-    return () => {
-      resizeObserver.disconnect();
-      mutationObserver.disconnect();
-    };
-  }, [densityMode, form]);
-
   // 通知父组件溢出状态
   useEffect(() => {
     const overflow = contentHeight > availableHeight;
@@ -145,12 +111,46 @@ export function EditablePreview({
   const usedPercent = Math.min(100, Math.round((contentHeight / availableHeight) * 100));
   const isOverflow = contentHeight > availableHeight;
   const pages = Math.ceil(contentHeight / availableHeight);
-
-  const hasContent = form.basicInfo.name || form.basicInfo.phone || form.education.some(e => e.school);
+  const usageBar = (
+    <div className="w-full max-w-md mb-3">
+      <div className="flex justify-between text-xs text-gray-200 mb-1">
+        <span>
+          {hasPendingSuggestions
+            ? `🔍 AI 建议模式（${aiSuggestions.filter(s => s.status === 'pending').length} 条待处理）`
+            : `页面使用: ${usedPercent}%`
+          }
+          <span className="text-gray-400 text-[10px] ml-1">(点击可编辑)</span>
+        </span>
+        <span>{hasPendingSuggestions ? '📄 自动扩展' : isOverflow ? `⚠️ 约 ${pages} 页` : '✓ 1 页内'}</span>
+      </div>
+      {!hasPendingSuggestions && (
+        <div className="h-2 bg-gray-600 rounded-full overflow-hidden">
+          <div
+            className={`h-full transition-all duration-300 ${
+              isOverflow ? 'bg-amber-500' : usedPercent > 85 ? 'bg-yellow-500' : 'bg-green-500'
+            }`}
+            style={{ width: `${Math.min(usedPercent, 100)}%` }}
+          />
+        </div>
+      )}
+      {hasPendingSuggestions && (
+        <div className="p-2 bg-blue-500/20 border border-blue-400/50 rounded-lg">
+          <p className="text-blue-300 text-xs">💡 处理完所有建议后，页面将恢复 A4 尺寸预览</p>
+        </div>
+      )}
+      {!hasPendingSuggestions && isOverflow && (
+        <div className="mt-2 p-2 bg-amber-500/20 border border-amber-400/50 rounded-lg">
+          <p className="text-amber-300 text-xs font-medium mb-1">⚠️ 内容超过 1 页</p>
+          <p className="text-amber-200 text-xs">💡 切换到「紧凑」或「极简」模式</p>
+        </div>
+      )}
+    </div>
+  );
 
   if (!hasContent) {
     return (
       <div ref={containerRef} className="w-full flex flex-col items-center">
+        {usageBar}
         <div 
           className="bg-white shadow-2xl flex items-center justify-center"
           style={{ width: A4_WIDTH * scale, height: A4_HEIGHT * scale }}
@@ -167,40 +167,7 @@ export function EditablePreview({
 
   return (
     <div ref={containerRef} className="w-full flex flex-col items-center">
-      {/* 页面使用情况指示器 */}
-      <div className="w-full max-w-md mb-3">
-        <div className="flex justify-between text-xs text-gray-300 mb-1">
-          <span>
-            {hasPendingSuggestions 
-              ? `🔍 AI 建议模式（${aiSuggestions.filter(s => s.status === 'pending').length} 条待处理）` 
-              : `页面使用: ${usedPercent}%`
-            }
-            <span className="text-gray-500 text-[10px] ml-1">(点击可编辑)</span>
-          </span>
-          <span>{hasPendingSuggestions ? '📄 自动扩展' : isOverflow ? `⚠️ 约 ${pages} 页` : '✓ 1 页内'}</span>
-        </div>
-        {!hasPendingSuggestions && (
-          <div className="h-2 bg-gray-600 rounded-full overflow-hidden">
-            <div 
-              className={`h-full transition-all duration-300 ${
-                isOverflow ? 'bg-amber-500' : usedPercent > 85 ? 'bg-yellow-500' : 'bg-green-500'
-              }`}
-              style={{ width: `${Math.min(usedPercent, 100)}%` }}
-            />
-          </div>
-        )}
-        {hasPendingSuggestions && (
-          <div className="p-2 bg-blue-500/20 border border-blue-400/50 rounded-lg">
-            <p className="text-blue-300 text-xs">💡 处理完所有建议后，页面将恢复 A4 尺寸预览</p>
-          </div>
-        )}
-        {!hasPendingSuggestions && isOverflow && (
-          <div className="mt-2 p-2 bg-amber-500/20 border border-amber-400/50 rounded-lg">
-            <p className="text-amber-300 text-xs font-medium mb-1">⚠️ 内容超过 1 页</p>
-            <p className="text-amber-200 text-xs">💡 切换到「紧凑」或「极简」模式</p>
-          </div>
-        )}
-      </div>
+      {usageBar}
 
       {/* A4 纸张 - 有 AI 建议时自动扩展高度 */}
       <div 
@@ -213,7 +180,7 @@ export function EditablePreview({
       >
         <div 
           ref={previewRef}
-          className={styles.lineHeight}
+          className={`${styles.lineHeight} text-gray-900`}
           style={{ 
             transform: `scale(${scale})`,
             transformOrigin: 'top left',

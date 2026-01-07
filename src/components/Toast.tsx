@@ -10,10 +10,10 @@ interface ToastProps {
 }
 
 const toastConfig = {
-  success: { bg: 'bg-green-600', icon: '✓' },
+  success: { bg: 'bg-emerald-600', icon: '✓' },
   error: { bg: 'bg-red-600', icon: '✕' },
   warning: { bg: 'bg-amber-500', icon: '⚠' },
-  info: { bg: 'bg-blue-600', icon: 'ℹ' },
+  info: { bg: 'bg-teal-600', icon: 'ℹ' },
 };
 
 export function Toast({ message, type = 'info', duration = 2500, onClose }: ToastProps) {

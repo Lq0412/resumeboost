@@ -2,8 +2,8 @@
  * 聊天输入组件
  */
 import { useState, useCallback, type KeyboardEvent } from 'react';
+import { CompactTextarea } from './tabs/shared';
 
-// 最大输入长度
 const MAX_INPUT_LENGTH = 500;
 
 interface ChatInputProps {
@@ -34,27 +34,25 @@ export function ChatInput({ onSend, disabled = false, placeholder }: ChatInputPr
   }, [handleSend]);
 
   return (
-    <div className="p-3 border-t border-gray-700">
+    <div className="p-3 border-t border-white/[0.04]">
       <div className="relative">
-        <textarea
+        <CompactTextarea
           value={value}
-          onChange={(e) => setValue(e.target.value)}
+          onChange={setValue}
           onKeyDown={handleKeyDown}
           disabled={disabled}
           placeholder={placeholder || '描述你想要的修改，如：让第一条工作经历更突出成果'}
-          className={`w-full h-16 px-3 py-2 pr-16 text-xs bg-gray-700 border rounded resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-500 disabled:opacity-50 disabled:cursor-not-allowed ${
-            isOverLimit ? 'border-red-500' : 'border-gray-600'
-          }`}
+          className={`h-16 pr-16 px-3 py-2 ${isOverLimit ? 'border-red-500/50' : 'border-white/[0.08]'}`}
         />
         <button
           onClick={handleSend}
           disabled={!canSend}
-          className="absolute right-2 bottom-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-xs rounded transition-colors"
+          className="absolute right-2 bottom-2 px-3 py-1.5 bg-teal-500/90 hover:bg-teal-500 disabled:bg-white/[0.06] disabled:text-gray-600 disabled:cursor-not-allowed text-white text-xs rounded-lg transition-colors shadow-[0_1px_0_rgba(0,0,0,0.2)]"
         >
           发送
         </button>
       </div>
-      <div className={`text-right text-xs mt-1 ${isOverLimit ? 'text-red-400' : 'text-gray-500'}`}>
+      <div className={`text-right text-xs mt-1 ${isOverLimit ? 'text-red-400' : 'text-gray-600'}`}>
         {charCount}/{MAX_INPUT_LENGTH}
       </div>
     </div>

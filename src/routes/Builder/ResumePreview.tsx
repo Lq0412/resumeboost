@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from 'react';
 import { useBuilderForm } from './useBuilderForm';
-import { A4_WIDTH, A4_HEIGHT, densityStyles, formatTime } from './utils';
+import { useContentHeight } from './hooks';
+import { A4_WIDTH, A4_HEIGHT, densityStyles, formatTime, hasResumeContent } from './utils';
 
 type DensityMode = 'normal' | 'compact' | 'tight';
 
@@ -15,44 +16,13 @@ export function ResumePreview({ form, densityMode = 'normal', previewRef, onOver
   const contentRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0.6);
-  const [contentHeight, setContentHeight] = useState(0);
+  const hasContent = hasResumeContent(form);
+  const contentHeight = useContentHeight(contentRef, [densityMode, hasContent]);
   
   const styles = densityStyles[densityMode];
 
   // 计算可用高度（A4 高度减去上下 padding）
   const availableHeight = A4_HEIGHT - styles.padding * 2;
-
-  // 使用 ResizeObserver 监听内容高度变化
-  useEffect(() => {
-    const contentEl = contentRef.current;
-    if (!contentEl) return;
-
-    const updateHeight = () => {
-      requestAnimationFrame(() => {
-        if (contentRef.current) {
-          const height = contentRef.current.scrollHeight;
-          setContentHeight(height);
-        }
-      });
-    };
-
-    updateHeight();
-
-    const resizeObserver = new ResizeObserver(updateHeight);
-    resizeObserver.observe(contentEl);
-
-    const mutationObserver = new MutationObserver(updateHeight);
-    mutationObserver.observe(contentEl, { 
-      childList: true, 
-      subtree: true, 
-      characterData: true 
-    });
-
-    return () => {
-      resizeObserver.disconnect();
-      mutationObserver.disconnect();
-    };
-  }, [densityMode, form]);
 
   // 通知父组件溢出状态
   useEffect(() => {
@@ -77,12 +47,37 @@ export function ResumePreview({ form, densityMode = 'normal', previewRef, onOver
   const usedPercent = Math.min(100, Math.round((contentHeight / availableHeight) * 100));
   const isOverflow = contentHeight > availableHeight;
   const pages = Math.ceil(contentHeight / availableHeight);
-
-  const hasContent = form.basicInfo.name || form.basicInfo.phone || form.education.some(e => e.school);
+  const usageBar = (
+    <div className="w-full max-w-md mb-3">
+      <div className="flex justify-between text-xs text-gray-200 mb-1">
+        <span>页面使用: {usedPercent}%</span>
+        <span>{isOverflow ? `⚠️ 约 ${pages} 页` : '✓ 1 页内'}</span>
+      </div>
+      <div className="h-2 bg-gray-600 rounded-full overflow-hidden">
+        <div
+          className={`h-full transition-all duration-300 ${
+            isOverflow ? 'bg-amber-500' : usedPercent > 85 ? 'bg-yellow-500' : 'bg-green-500'
+          }`}
+          style={{ width: `${Math.min(usedPercent, 100)}%` }}
+        />
+      </div>
+      {isOverflow && (
+        <div className="mt-2 p-2 bg-amber-500/20 border border-amber-400/50 rounded-lg">
+          <p className="text-amber-300 text-xs font-medium mb-1">
+            ⚠️ 内容超过 1 页，建议优化
+          </p>
+          <p className="text-amber-200 text-xs">
+            💡 切换到「紧凑」或「极简」模式，或精简部分内容
+          </p>
+        </div>
+      )}
+    </div>
+  );
 
   if (!hasContent) {
     return (
       <div ref={containerRef} className="w-full flex flex-col items-center">
+        {usageBar}
         <div 
           className="bg-white shadow-2xl flex items-center justify-center"
           style={{ 
@@ -102,31 +97,7 @@ export function ResumePreview({ form, densityMode = 'normal', previewRef, onOver
 
   return (
     <div ref={containerRef} className="w-full flex flex-col items-center">
-      {/* 页面使用情况指示器 */}
-      <div className="w-full max-w-md mb-3">
-        <div className="flex justify-between text-xs text-gray-300 mb-1">
-          <span>页面使用: {usedPercent}%</span>
-          <span>{isOverflow ? `⚠️ 约 ${pages} 页` : '✓ 1 页内'}</span>
-        </div>
-        <div className="h-2 bg-gray-600 rounded-full overflow-hidden">
-          <div 
-            className={`h-full transition-all duration-300 ${
-              isOverflow ? 'bg-amber-500' : usedPercent > 85 ? 'bg-yellow-500' : 'bg-green-500'
-            }`}
-            style={{ width: `${Math.min(usedPercent, 100)}%` }}
-          />
-        </div>
-        {isOverflow && (
-          <div className="mt-2 p-2 bg-amber-500/20 border border-amber-400/50 rounded-lg">
-            <p className="text-amber-300 text-xs font-medium mb-1">
-              ⚠️ 内容超过 1 页，建议优化
-            </p>
-            <p className="text-amber-200 text-xs">
-              💡 尝试切换到「紧凑」或「极简」模式，或精简部分内容
-            </p>
-          </div>
-        )}
-      </div>
+      {usageBar}
 
       {/* A4 纸张 */}
       <div 
@@ -139,7 +110,7 @@ export function ResumePreview({ form, densityMode = 'normal', previewRef, onOver
         {/* 内容区域 */}
         <div 
           ref={previewRef}
-          className={styles.lineHeight}
+          className={`${styles.lineHeight} text-gray-900`}
           style={{ 
             transform: `scale(${scale})`,
             transformOrigin: 'top left',

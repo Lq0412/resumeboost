@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { throttle } from './utils';
 
 // 自动调整 textarea 高度的 hook
@@ -24,7 +24,8 @@ export const useDragResize = (
   setWidth: (width: number) => void,
   minWidth: number,
   maxWidth: number,
-  isRightSide = false
+  isRightSide = false,
+  setIsDragging?: (value: boolean) => void
 ) => {
   useEffect(() => {
     if (!isDragging) return;
@@ -38,8 +39,11 @@ export const useDragResize = (
     }, 16); // ~60fps
 
     const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
+      setIsDragging?.(false);
     };
 
     document.addEventListener('mousemove', handleMouseMove);
@@ -53,5 +57,49 @@ export const useDragResize = (
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
     };
-  }, [isDragging, setWidth, minWidth, maxWidth, isRightSide]);
+  }, [isDragging, setWidth, minWidth, maxWidth, isRightSide, setIsDragging]);
+};
+
+export const useContentHeight = <T extends HTMLElement>(
+  contentRef: React.RefObject<T>,
+  deps: React.DependencyList = []
+) => {
+  const [contentHeight, setContentHeight] = useState(0);
+
+  const updateHeight = useCallback(() => {
+    const contentEl = contentRef.current;
+    if (!contentEl) return;
+    requestAnimationFrame(() => {
+      const next = contentRef.current;
+      if (next) {
+        setContentHeight(next.scrollHeight);
+      }
+    });
+  }, [contentRef]);
+
+  useEffect(() => {
+    updateHeight();
+  }, [updateHeight, ...deps]);
+
+  useEffect(() => {
+    const contentEl = contentRef.current;
+    if (!contentEl) return;
+
+    const resizeObserver = new ResizeObserver(updateHeight);
+    resizeObserver.observe(contentEl);
+
+    const mutationObserver = new MutationObserver(updateHeight);
+    mutationObserver.observe(contentEl, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+
+    return () => {
+      resizeObserver.disconnect();
+      mutationObserver.disconnect();
+    };
+  }, [contentRef, updateHeight, ...deps]);
+
+  return contentHeight;
 };

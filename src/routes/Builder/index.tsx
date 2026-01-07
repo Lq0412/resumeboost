@@ -6,7 +6,7 @@ import { showToast } from '../../components';
 import { api, handleAPIError } from '../../lib/api';
 import { ResumePreview } from './ResumePreview';
 import { EditablePreview } from './EditablePreview';
-import { CompactInput, CompactDateRange } from './FormInputs';
+import { AwardTab, BasicTab, EducationTab, ProjectTab, SkillTab, WorkTab } from './tabs';
 import { useAutoResizeTextarea, useDragResize } from './hooks';
 import { exportToPDF } from './pdfExport';
 import { MAX_PHOTO_SIZE, MIN_RESUME_LENGTH } from './utils';
@@ -81,8 +81,8 @@ export default function Builder() {
   } = useBuilderForm();
 
   // 拖拽调节宽度
-  useDragResize(isDraggingLeft, setLeftWidth, 260, 450);
-  useDragResize(isDraggingRight, setRightWidth, 220, 350, true);
+  useDragResize(isDraggingLeft, setLeftWidth, 260, 450, false, setIsDraggingLeft);
+  useDragResize(isDraggingRight, setRightWidth, 220, 350, true, setIsDraggingRight);
 
   // 解析 AI 返回的 path，获取 section 信息
   const parseSuggestionPath = useCallback((path: string): Pick<AISuggestion, 'section' | 'sectionLabel' | 'itemIndex' | 'bulletIndex' | 'field'> => {
@@ -571,16 +571,19 @@ export default function Builder() {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-gray-100">
+    <div className="h-screen flex flex-col bg-[#0b0c10] text-gray-100">
       {/* 顶部工具栏 */}
-      <header className="h-12 bg-white border-b border-gray-200 px-4 flex items-center justify-between flex-shrink-0 shadow-sm">
+      <header className="h-14 bg-[#111318]/90 backdrop-blur-xl border-b border-white/[0.06] px-4 flex items-center justify-between flex-shrink-0 shadow-[0_1px_0_rgba(255,255,255,0.03)]">
         <div className="flex items-center gap-4">
-          <h1 className="text-base font-bold text-gray-900 cursor-pointer hover:text-blue-600 transition-colors" onClick={() => navigate('/')}>
-            ResumeBoost
-          </h1>
+          <div className="flex items-center gap-2.5 cursor-pointer group" onClick={() => navigate('/')}>
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center shadow-lg shadow-teal-500/10">
+              <span className="text-white font-bold text-xs">R</span>
+            </div>
+            <span className="font-semibold text-gray-200 group-hover:text-white transition-colors">ResumeBoost</span>
+          </div>
           {hasDraft && (
-            <button onClick={handleLoadDraft} className="text-xs text-blue-600 hover:text-blue-800 font-medium transition-colors">
-              📝 加载草稿
+            <button onClick={handleLoadDraft} className="text-xs text-teal-400 hover:text-teal-300 font-medium transition-colors flex items-center gap-1">
+              <span>📝</span> 加载草稿
             </button>
           )}
         </div>
@@ -588,26 +591,26 @@ export default function Builder() {
           {canUndo && (
             <button 
               onClick={handleUndo} 
-              className="px-3 py-1.5 text-xs text-gray-700 bg-white hover:bg-gray-50 border border-gray-300 rounded-md transition-all shadow-sm hover:shadow"
+              className="px-3 py-1.5 text-xs text-gray-300 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] rounded-lg transition-colors shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
             >
               ↩️ 撤销
             </button>
           )}
           <button 
             onClick={handleSaveDraft} 
-            className="px-3 py-1.5 text-xs text-gray-700 bg-white hover:bg-gray-50 border border-gray-300 rounded-md transition-all shadow-sm hover:shadow"
+            className="px-3 py-1.5 text-xs text-gray-300 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] rounded-lg transition-colors shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
           >
             💾 保存
           </button>
           <button 
             onClick={handleExportPDF} 
-            className="px-3 py-1.5 text-xs text-gray-700 bg-white hover:bg-gray-50 border border-gray-300 rounded-md transition-all shadow-sm hover:shadow"
+            className="px-3 py-1.5 text-xs text-gray-300 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] rounded-lg transition-colors shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
           >
             📄 导出
           </button>
           <button 
             onClick={handleSubmit} 
-            className="px-4 py-1.5 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700 active:bg-blue-800 transition-all shadow-sm hover:shadow font-medium"
+            className="px-4 py-1.5 text-xs bg-gradient-to-r from-teal-600 to-teal-500 text-white rounded-lg hover:from-teal-500 hover:to-teal-400 transition-all font-medium shadow-lg shadow-teal-500/25 ring-1 ring-teal-400/30"
           >
             ✨ AI 优化
           </button>
@@ -617,9 +620,9 @@ export default function Builder() {
       {/* 三栏主体 */}
       <div className="flex-1 flex overflow-hidden">
         {/* 左侧：编辑区 */}
-        <div className="flex-shrink-0 bg-white border-r border-gray-200 flex flex-col" style={{ width: leftWidth }}>
+        <div className="flex-shrink-0 bg-[#111318] border-r border-white/[0.06] flex flex-col" style={{ width: leftWidth }}>
           {/* Tab 导航 */}
-          <div className="flex border-b border-gray-200 bg-gray-50">
+          <div className="flex border-b border-white/[0.06] bg-[#0f1116]">
             {[
               { id: 'basic' as EditTab, label: '基本', icon: '👤' },
               { id: 'edu' as EditTab, label: '教育', icon: '🎓' },
@@ -631,10 +634,10 @@ export default function Builder() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 px-2 py-2 text-xs font-medium transition-all ${
+                className={`flex-1 px-2 py-2.5 text-xs font-medium transition-all ${
                   activeTab === tab.id 
-                    ? 'bg-white text-blue-600 border-b-2 border-blue-600 shadow-sm' 
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    ? 'bg-white/[0.04] text-teal-300 border-b-2 border-teal-400/70' 
+                    : 'text-gray-500 hover:text-gray-200 hover:bg-white/[0.03]'
                 }`}
               >
                 <span className="block text-sm mb-0.5">{tab.icon}</span>
@@ -645,223 +648,103 @@ export default function Builder() {
 
           {/* 表单内容 */}
           <div className="flex-1 overflow-y-auto p-3 custom-scrollbar">
-            {/* 基本信息 */}
             {activeTab === 'basic' && (
-              <div className="space-y-3">
-                {/* 照片区域 - 顶部居中 */}
-                <div className="flex justify-center">
-                  <div className="text-center">
-                    <input ref={photoInputRef} type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
-                    <div 
-                      onClick={() => photoInputRef.current?.click()} 
-                      className="w-20 h-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-all overflow-hidden mx-auto group"
-                    >
-                      {form.photo ? (
-                        <img src={form.photo} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="text-center">
-                          <span className="text-gray-400 text-2xl group-hover:text-blue-500 transition-colors">📷</span>
-                          <p className="text-xs text-gray-400 mt-1">上传照片</p>
-                        </div>
-                      )}
-                    </div>
-                    <p className="text-xs text-gray-500 mt-2">
-                      {form.photo ? (
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); setPhoto(''); }} 
-                          className="text-red-500 hover:text-red-700 transition-colors"
-                        >
-                          删除照片
-                        </button>
-                      ) : (
-                        '支持 JPG、PNG，不超过 2MB'
-                      )}
-                    </p>
-                  </div>
-                </div>
-                {/* 基本信息表单 */}
-                <div className="space-y-2">
-                  <div className="grid grid-cols-2 gap-2">
-                    <CompactInput label="姓名" value={form.basicInfo.name || ''} onChange={(v) => updateBasicInfo('name', v)} placeholder="张三" />
-                    <CompactInput label="求职意向" value={form.basicInfo.jobTitle || ''} onChange={(v) => updateBasicInfo('jobTitle', v)} placeholder="Java开发" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <CompactInput label="手机" value={form.basicInfo.phone} onChange={(v) => updateBasicInfo('phone', v)} placeholder="138xxxx" />
-                    <CompactInput label="邮箱" value={form.basicInfo.email} onChange={(v) => updateBasicInfo('email', v)} placeholder="email" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <CompactInput label="状态" value={form.basicInfo.status || ''} onChange={(v) => updateBasicInfo('status', v)} placeholder="在职/应届" />
-                    <CompactInput label="城市" value={form.basicInfo.city || ''} onChange={(v) => updateBasicInfo('city', v)} placeholder="北京" />
-                  </div>
-                </div>
-                <details className="text-xs">
-                  <summary className="text-blue-600 cursor-pointer hover:text-blue-800 font-medium py-1">+ 更多信息</summary>
-                  <div className="mt-2 space-y-2 pt-2 border-t border-gray-200">
-                    <CompactInput label="GitHub" value={form.basicInfo.github || ''} onChange={(v) => updateBasicInfo('github', v)} placeholder="github.com/xxx" />
-                    <CompactInput label="网站" value={form.basicInfo.website || ''} onChange={(v) => updateBasicInfo('website', v)} placeholder="yoursite.com" />
-                    <CompactInput label="籍贯" value={form.basicInfo.hometown || ''} onChange={(v) => updateBasicInfo('hometown', v)} placeholder="广东" />
-                  </div>
-                </details>
-              </div>
+              <BasicTab
+                basicInfo={form.basicInfo}
+                photo={form.photo}
+                photoInputRef={photoInputRef}
+                onPhotoUpload={handlePhotoUpload}
+                onPhotoClear={() => setPhoto('')}
+                onUpdateBasicInfo={updateBasicInfo}
+              />
             )}
-
-            {/* 教育经历 */}
             {activeTab === 'edu' && (
-              <div className="space-y-2">
-                <div className="flex justify-between items-center"><span className="text-xs font-medium text-gray-700">教育经历</span><button onClick={addEducation} className="text-xs text-blue-600">+ 添加</button></div>
-                {form.education.map((edu, idx) => (
-                  <div key={edu.id} className="p-2 bg-gray-50 rounded border border-gray-200 space-y-1.5">
-                    <div className="flex justify-between"><span className="text-xs text-gray-400">#{idx + 1}</span>{form.education.length > 1 && <button onClick={() => removeEducation(edu.id)} className="text-xs text-red-500">删除</button>}</div>
-                    <CompactInput value={edu.school} onChange={(v) => updateEducation(edu.id, 'school', v)} placeholder="学校" />
-                    <div className="flex gap-1"><CompactInput value={edu.major || ''} onChange={(v) => updateEducation(edu.id, 'major', v)} placeholder="专业" /><CompactInput value={edu.degree || ''} onChange={(v) => updateEducation(edu.id, 'degree', v)} placeholder="学历" /></div>
-                    <CompactDateRange startYear={edu.startYear} startMonth={edu.startMonth} endYear={edu.endYear} endMonth={edu.endMonth} onStartChange={(y, m) => { updateEducation(edu.id, 'startYear', y); updateEducation(edu.id, 'startMonth', m); }} onEndChange={(y, m) => { updateEducation(edu.id, 'endYear', y); updateEducation(edu.id, 'endMonth', m); }} />
-                    <textarea 
-                      value={edu.description || ''} 
-                      onChange={(e) => { 
-                        updateEducation(edu.id, 'description', e.target.value); 
-                        handleTextareaResize(e);
-                      }} 
-                      onFocus={handleTextareaFocus}
-                      className="w-full px-2 py-2 text-xs border border-gray-300 rounded-md resize-none min-h-[40px] focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-gray-400" 
-                      placeholder="校园经历、获奖情况等" 
-                    />
-                  </div>
-                ))}
-              </div>
+              <EducationTab
+                education={form.education}
+                onAdd={addEducation}
+                onRemove={removeEducation}
+                onUpdate={updateEducation}
+                onResize={handleTextareaResize}
+                onFocus={handleTextareaFocus}
+              />
             )}
-
-            {/* 专业技能 */}
             {activeTab === 'skill' && (
-              <div className="space-y-2">
-                <div className="flex justify-between items-center"><span className="text-xs font-medium text-gray-700">专业技能</span><button onClick={addSkillCategory} className="text-xs text-blue-600">+ 添加</button></div>
-                {form.skillCategories?.map((cat, idx) => (
-                  <div key={cat.id} className="p-2 bg-gray-50 rounded border border-gray-200 space-y-1.5">
-                    <div className="flex justify-between"><span className="text-xs text-gray-400">#{idx + 1}</span>{form.skillCategories!.length > 1 && <button onClick={() => removeSkillCategory(cat.id)} className="text-xs text-red-500">删除</button>}</div>
-                    <CompactInput value={cat.name} onChange={(v) => updateSkillCategory(cat.id, 'name', v)} placeholder="技能名称" />
-                    <textarea 
-                      value={cat.description} 
-                      onChange={(e) => { 
-                        updateSkillCategory(cat.id, 'description', e.target.value); 
-                        handleTextareaResize(e);
-                      }} 
-                      onFocus={handleTextareaFocus}
-                      className="w-full px-2 py-2 text-xs border border-gray-300 rounded-md resize-none min-h-[40px] focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-gray-400" 
-                      placeholder="技能详细描述" 
-                    />
-                  </div>
-                ))}
-                {(!form.skillCategories || form.skillCategories.length === 0) && (
-                  <textarea 
-                    value={form.skills} 
-                    onChange={(e) => { 
-                      updateSkills(e.target.value); 
-                      handleTextareaResize(e);
-                    }} 
-                    onFocus={handleTextareaFocus}
-                    className="w-full px-2 py-2 text-xs border border-gray-300 rounded-md resize-none min-h-[60px] focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-gray-400" 
-                    placeholder="技能列表..." 
-                  />
-                )}
-              </div>
+              <SkillTab
+                skillCategories={form.skillCategories}
+                skills={form.skills}
+                onAddCategory={addSkillCategory}
+                onRemoveCategory={removeSkillCategory}
+                onUpdateCategory={updateSkillCategory}
+                onUpdateSkills={updateSkills}
+                onResize={handleTextareaResize}
+                onFocus={handleTextareaFocus}
+              />
             )}
-
-            {/* 工作经历 */}
             {activeTab === 'work' && (
-              <div className="space-y-2">
-                <div className="flex justify-between items-center"><span className="text-xs font-medium text-gray-700">工作经历</span><button onClick={addExperience} className="text-xs text-blue-600">+ 添加</button></div>
-                {form.experience.length === 0 && <p className="text-xs text-gray-400 py-4 text-center">暂无</p>}
-                {form.experience.map((exp, idx) => (
-                  <div key={exp.id} className="p-2 bg-gray-50 rounded border border-gray-200 space-y-1.5">
-                    <div className="flex justify-between"><span className="text-xs text-gray-400">#{idx + 1}</span><button onClick={() => removeExperience(exp.id)} className="text-xs text-red-500">删除</button></div>
-                    <div className="flex gap-1"><CompactInput value={exp.company} onChange={(v) => updateExperience(exp.id, 'company', v)} placeholder="公司" /><CompactInput value={exp.position} onChange={(v) => updateExperience(exp.id, 'position', v)} placeholder="职位" /></div>
-                    <CompactInput value={exp.location || ''} onChange={(v) => updateExperience(exp.id, 'location', v)} placeholder="地点" />
-                    <CompactDateRange startYear={exp.startYear} startMonth={exp.startMonth} endYear={exp.endYear} endMonth={exp.endMonth} onStartChange={(y, m) => { updateExperience(exp.id, 'startYear', y); updateExperience(exp.id, 'startMonth', m); }} onEndChange={(y, m) => { updateExperience(exp.id, 'endYear', y); updateExperience(exp.id, 'endMonth', m); }} showPresent />
-                    {exp.bullets.map((b, bi) => (
-                      <div key={bi} className="flex gap-1">
-                        <textarea 
-                          value={b} 
-                          onChange={(e) => { updateExperienceBullet(exp.id, bi, e.target.value); handleTextareaResize(e); }}
-                          onFocus={handleTextareaFocus}
-                          className="flex-1 px-2 py-2 text-xs border border-gray-300 rounded-md resize-none min-h-[40px] focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-gray-400" 
-                          placeholder={`工作内容 ${bi + 1}`} 
-                        />
-                        {exp.bullets.length > 1 && <button onClick={() => removeExperienceBullet(exp.id, bi)} className="text-red-400 text-xs px-1">×</button>}
-                      </div>
-                    ))}
-                    {exp.bullets.length < 5 && <button onClick={() => addExperienceBullet(exp.id)} className="text-xs text-blue-600">+ 描述</button>}
-                  </div>
-                ))}
-              </div>
+              <WorkTab
+                experience={form.experience}
+                onAdd={addExperience}
+                onRemove={removeExperience}
+                onUpdate={updateExperience}
+                onUpdateBullet={updateExperienceBullet}
+                onAddBullet={addExperienceBullet}
+                onRemoveBullet={removeExperienceBullet}
+                onResize={handleTextareaResize}
+                onFocus={handleTextareaFocus}
+              />
             )}
-
-            {/* 项目经历 */}
             {activeTab === 'project' && (
-              <div className="space-y-2">
-                <div className="flex justify-between items-center"><span className="text-xs font-medium text-gray-700">项目经历</span><button onClick={addProject} className="text-xs text-blue-600">+ 添加</button></div>
-                {form.projects.length === 0 && <p className="text-xs text-gray-400 py-4 text-center">暂无</p>}
-                {form.projects.map((proj, idx) => (
-                  <div key={proj.id} className="p-2 bg-gray-50 rounded border border-gray-200 space-y-1.5">
-                    <div className="flex justify-between"><span className="text-xs text-gray-400">#{idx + 1}</span><button onClick={() => removeProject(proj.id)} className="text-xs text-red-500">删除</button></div>
-                    <div className="flex gap-1"><CompactInput value={proj.name} onChange={(v) => updateProject(proj.id, 'name', v)} placeholder="项目名" /><CompactInput value={proj.role || ''} onChange={(v) => updateProject(proj.id, 'role', v)} placeholder="角色" /></div>
-                    <CompactInput value={proj.link || ''} onChange={(v) => updateProject(proj.id, 'link', v)} placeholder="链接" />
-                    <CompactDateRange startYear={proj.startYear} startMonth={proj.startMonth} endYear={proj.endYear} endMonth={proj.endMonth} onStartChange={(y, m) => { updateProject(proj.id, 'startYear', y); updateProject(proj.id, 'startMonth', m); }} onEndChange={(y, m) => { updateProject(proj.id, 'endYear', y); updateProject(proj.id, 'endMonth', m); }} />
-                    {proj.bullets.map((b, bi) => (
-                      <div key={bi} className="flex gap-1">
-                        <textarea 
-                          value={b} 
-                          onChange={(e) => { updateProjectBullet(proj.id, bi, e.target.value); handleTextareaResize(e); }}
-                          onFocus={handleTextareaFocus}
-                          className="flex-1 px-2 py-2 text-xs border border-gray-300 rounded-md resize-none min-h-[40px] focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-gray-400" 
-                          placeholder={`描述 ${bi + 1}`} 
-                        />
-                        {proj.bullets.length > 1 && <button onClick={() => removeProjectBullet(proj.id, bi)} className="text-red-400 text-xs px-1">×</button>}
-                      </div>
-                    ))}
-                    {proj.bullets.length < 5 && <button onClick={() => addProjectBullet(proj.id)} className="text-xs text-blue-600">+ 描述</button>}
-                  </div>
-                ))}
-              </div>
+              <ProjectTab
+                projects={form.projects}
+                onAdd={addProject}
+                onRemove={removeProject}
+                onUpdate={updateProject}
+                onUpdateBullet={updateProjectBullet}
+                onAddBullet={addProjectBullet}
+                onRemoveBullet={removeProjectBullet}
+                onResize={handleTextareaResize}
+                onFocus={handleTextareaFocus}
+              />
             )}
-
-            {/* 荣誉奖项 */}
             {activeTab === 'award' && (
-              <div className="space-y-2">
-                <div className="flex justify-between items-center"><span className="text-xs font-medium text-gray-700">荣誉奖项</span><button onClick={addAward} className="text-xs text-blue-600">+ 添加</button></div>
-                {(!form.awards || form.awards.length === 0) && <p className="text-xs text-gray-400 py-4 text-center">暂无</p>}
-                {form.awards?.map((a) => (<div key={a.id} className="flex gap-1 items-center"><CompactInput value={a.name} onChange={(v) => updateAward(a.id, 'name', v)} placeholder="奖项" /><input value={a.time || ''} onChange={(e) => updateAward(a.id, 'time', e.target.value)} className="w-16 px-2 py-1 text-xs border border-gray-200 rounded" placeholder="时间" /><button onClick={() => removeAward(a.id)} className="text-red-400 text-xs">×</button></div>))}
-              </div>
+              <AwardTab
+                awards={form.awards}
+                onAdd={addAward}
+                onRemove={removeAward}
+                onUpdate={updateAward}
+              />
             )}
           </div>
         </div>
 
         {/* 拖拽条 */}
         <div 
-          className="w-1 bg-gray-300 hover:bg-blue-500 active:bg-blue-600 cursor-col-resize flex-shrink-0 transition-colors" 
+          className="w-1 bg-white/[0.06] hover:bg-teal-500/50 active:bg-teal-500 cursor-col-resize flex-shrink-0 transition-colors" 
           onMouseDown={() => setIsDraggingLeft(true)} 
         />
 
         {/* 中间：预览区 */}
-        <div className="flex-1 min-w-0 bg-gradient-to-br from-gray-500 to-gray-600 flex flex-col overflow-hidden">
-          <div className="h-10 bg-gray-700 px-4 flex items-center justify-between flex-shrink-0 shadow-md">
+        <div className="flex-1 min-w-0 bg-gradient-to-br from-[#1b1d22] to-[#121318] flex flex-col overflow-hidden">
+          <div className="h-10 bg-[#101218]/85 backdrop-blur-sm px-4 flex items-center justify-between flex-shrink-0 border-b border-white/[0.06] shadow-[0_1px_0_rgba(255,255,255,0.03)]">
             <div className="flex items-center gap-3">
-              <span className="text-xs font-medium text-gray-100">📄 简历预览</span>
-              <div className="flex items-center bg-gray-600 rounded-md p-0.5">
+              <span className="text-xs font-semibold text-gray-200">📄 简历预览</span>
+              <div className="flex items-center bg-white/[0.04] rounded-lg p-0.5 border border-white/[0.08]">
                 <button
                   onClick={() => setEditMode('preview')}
-                  className={`px-2 py-1 text-xs rounded transition-all ${
+                  className={`px-2.5 py-1 text-xs rounded-md transition-all ${
                     editMode === 'preview' 
-                      ? 'bg-blue-600 text-white' 
-                      : 'text-gray-300 hover:text-white'
+                      ? 'bg-teal-500/90 text-white shadow-[0_0_0_1px_rgba(45,212,191,0.45)]' 
+                      : 'text-gray-500 hover:text-gray-200'
                   }`}
                 >
                   ✏️ 可编辑
                 </button>
                 <button
                   onClick={() => setEditMode('form')}
-                  className={`px-2 py-1 text-xs rounded transition-all ${
+                  className={`px-2.5 py-1 text-xs rounded-md transition-all ${
                     editMode === 'form' 
-                      ? 'bg-blue-600 text-white' 
-                      : 'text-gray-300 hover:text-white'
+                      ? 'bg-teal-500/90 text-white shadow-[0_0_0_1px_rgba(45,212,191,0.45)]' 
+                      : 'text-gray-500 hover:text-gray-200'
                   }`}
                 >
                   👁️ 只读
@@ -870,8 +753,8 @@ export default function Builder() {
             </div>
             <div className="flex items-center gap-2">
               {isOverflowing && (
-                <div className="flex items-center gap-1.5 px-2 py-1 bg-amber-500/20 border border-amber-400/50 rounded-md">
-                  <span className="text-xs text-amber-300 font-medium animate-pulse">
+                <div className="flex items-center gap-1.5 px-2 py-1 bg-amber-500/15 border border-amber-500/30 rounded-md">
+                  <span className="text-xs text-amber-400 font-medium animate-pulse">
                     ⚠️ 超过1页
                   </span>
                 </div>
@@ -879,8 +762,8 @@ export default function Builder() {
               <select 
                 value={densityMode} 
                 onChange={(e) => setDensityMode(e.target.value as DensityMode)} 
-                className={`text-xs bg-gray-600 text-gray-100 border rounded-md px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-                  isOverflowing ? 'border-amber-400 ring-1 ring-amber-400/50' : 'border-gray-500'
+                className={`text-xs bg-white/[0.04] text-gray-200 border rounded-lg px-2 py-1 focus:ring-2 focus:ring-teal-500/40 focus:border-teal-400/60 transition-all ${
+                  isOverflowing ? 'border-amber-500/40 ring-1 ring-amber-500/20' : 'border-white/[0.08]'
                 }`}
               >
                 <option value="normal">标准</option>
@@ -924,7 +807,7 @@ export default function Builder() {
         {/* AI 侧边栏 */}
         {showAISidebar && (
           <div 
-            className="w-1 bg-gray-300 hover:bg-blue-500 active:bg-blue-600 cursor-col-resize flex-shrink-0 transition-colors" 
+            className="w-1 bg-white/[0.06] hover:bg-teal-500/50 active:bg-teal-500 cursor-col-resize flex-shrink-0 transition-colors" 
             onMouseDown={() => setIsDraggingRight(true)} 
           />
         )}
