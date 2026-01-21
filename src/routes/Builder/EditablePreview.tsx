@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect } from 'react';
+import { FileText } from 'lucide-react';
 import { useBuilderForm } from './useBuilderForm';
 import { useContentHeight } from './hooks';
 import { A4_WIDTH, A4_HEIGHT, densityStyles, formatTime, hasResumeContent } from './utils';
@@ -116,12 +117,12 @@ export function EditablePreview({
       <div className="flex justify-between text-xs text-gray-200 mb-1">
         <span>
           {hasPendingSuggestions
-            ? `🔍 AI 建议模式（${aiSuggestions.filter(s => s.status === 'pending').length} 条待处理）`
+            ? `AI 建议模式（${aiSuggestions.filter(s => s.status === 'pending').length} 条待处理）`
             : `页面使用: ${usedPercent}%`
           }
           <span className="text-gray-400 text-[10px] ml-1">(点击可编辑)</span>
         </span>
-        <span>{hasPendingSuggestions ? '📄 自动扩展' : isOverflow ? `⚠️ 约 ${pages} 页` : '✓ 1 页内'}</span>
+        <span>{hasPendingSuggestions ? '自动扩展' : isOverflow ? `约 ${pages} 页` : '1 页内'}</span>
       </div>
       {!hasPendingSuggestions && (
         <div className="h-2 bg-gray-600 rounded-full overflow-hidden">
@@ -135,13 +136,13 @@ export function EditablePreview({
       )}
       {hasPendingSuggestions && (
         <div className="p-2 bg-blue-500/20 border border-blue-400/50 rounded-lg">
-          <p className="text-blue-300 text-xs">💡 处理完所有建议后，页面将恢复 A4 尺寸预览</p>
+          <p className="text-blue-300 text-xs">处理完所有建议后，页面将恢复 A4 尺寸预览</p>
         </div>
       )}
       {!hasPendingSuggestions && isOverflow && (
         <div className="mt-2 p-2 bg-amber-500/20 border border-amber-400/50 rounded-lg">
-          <p className="text-amber-300 text-xs font-medium mb-1">⚠️ 内容超过 1 页</p>
-          <p className="text-amber-200 text-xs">💡 切换到「紧凑」或「极简」模式</p>
+          <p className="text-amber-300 text-xs font-medium mb-1">内容超过 1 页</p>
+          <p className="text-amber-200 text-xs">切换到「紧凑」或「极简」模式</p>
         </div>
       )}
     </div>
@@ -156,7 +157,9 @@ export function EditablePreview({
           style={{ width: A4_WIDTH * scale, height: A4_HEIGHT * scale }}
         >
           <div className="text-center text-gray-400">
-            <div className="text-4xl mb-3">📝</div>
+            <div className="text-4xl mb-3">
+              <FileText className="w-16 h-16 mx-auto text-gray-300" />
+            </div>
             <p className="text-base">开始填写左侧表单</p>
             <p className="text-sm mt-1">或直接点击这里编辑</p>
           </div>
@@ -187,7 +190,7 @@ export function EditablePreview({
             width: A4_WIDTH,
             minHeight: A4_HEIGHT,
             padding: styles.padding,
-            fontFamily: "'Microsoft YaHei', 'PingFang SC', sans-serif",
+            fontFamily: "'DengXian', 'Microsoft YaHei', 'PingFang SC', sans-serif",
             backgroundColor: '#ffffff',
           }}
         >
@@ -198,11 +201,12 @@ export function EditablePreview({
               onClick={() => onSectionClick?.('basic')}
             >
               <div className="flex-1 pr-4">
-                <h1 className={`${styles.titleSize} font-bold text-gray-900 mb-1`}>
+                <h1 className={`${styles.titleSize} rb-bold text-gray-900 mb-1`}>
                   <EditableField
                     value={form.basicInfo.name || ''}
                     onChange={(v) => onUpdateBasicInfo('name', v)}
                     placeholder="姓名"
+                    className="rb-bold"
                   >
                     {form.basicInfo.name || '点击输入姓名'}
                   </EditableField>
@@ -219,7 +223,7 @@ export function EditablePreview({
                 </p>
                 <div className={`grid grid-cols-2 gap-x-3 gap-y-0.5 text-gray-600 ${styles.textSize}`}>
                   <span>
-                    📱 <EditableField
+                    电话: <EditableField
                       value={form.basicInfo.phone || ''}
                       onChange={(v) => onUpdateBasicInfo('phone', v)}
                       placeholder="手机号"
@@ -228,7 +232,7 @@ export function EditablePreview({
                     </EditableField>
                   </span>
                   <span>
-                    ✉️ <EditableField
+                    邮箱: <EditableField
                       value={form.basicInfo.email || ''}
                       onChange={(v) => onUpdateBasicInfo('email', v)}
                       placeholder="邮箱"
@@ -238,7 +242,7 @@ export function EditablePreview({
                   </span>
                   {form.basicInfo.city && (
                     <span>
-                      📍 <EditableField
+                      城市: <EditableField
                         value={form.basicInfo.city}
                         onChange={(v) => onUpdateBasicInfo('city', v)}
                       >
@@ -248,7 +252,7 @@ export function EditablePreview({
                   )}
                   {form.basicInfo.status && (
                     <span>
-                      🔵 <EditableField
+                      状态: <EditableField
                         value={form.basicInfo.status}
                         onChange={(v) => onUpdateBasicInfo('status', v)}
                       >
@@ -258,7 +262,7 @@ export function EditablePreview({
                   )}
                   {form.basicInfo.birthYear && (
                     <span>
-                      🎂 <EditableField
+                      出生: <EditableField
                         value={form.basicInfo.birthYear}
                         onChange={(v) => onUpdateBasicInfo('birthYear', v)}
                       >
@@ -278,7 +282,7 @@ export function EditablePreview({
                   )}
                   {form.basicInfo.hometown && (
                     <span>
-                      🏠 <EditableField
+                      籍贯: <EditableField
                         value={form.basicInfo.hometown}
                         onChange={(v) => onUpdateBasicInfo('hometown', v)}
                       >
@@ -288,7 +292,7 @@ export function EditablePreview({
                   )}
                   {form.basicInfo.github && (
                     <span className="text-blue-600">
-                      🔗 <EditableField
+                      GitHub: <EditableField
                         value={form.basicInfo.github}
                         onChange={(v) => onUpdateBasicInfo('github', v)}
                       >
@@ -298,7 +302,7 @@ export function EditablePreview({
                   )}
                   {form.basicInfo.website && (
                     <span className="text-blue-600">
-                      🌐 <EditableField
+                      网站: <EditableField
                         value={form.basicInfo.website}
                         onChange={(v) => onUpdateBasicInfo('website', v)}
                       >
@@ -323,17 +327,18 @@ export function EditablePreview({
                 className={`${styles.sectionGap} cursor-pointer hover:bg-blue-50/50 -mx-2 px-2 rounded transition-colors`}
                 onClick={() => onSectionClick?.('edu')}
               >
-                <h2 className={`${styles.sectionTitleSize} font-bold text-gray-900 border-b-2 border-gray-800 pb-2 mb-2`}>
+                <h2 className={`${styles.sectionTitleSize} rb-bold text-gray-900 border-b-2 border-gray-800 pb-2 mb-2`}>
                   教育经历
                 </h2>
                 {form.education.filter(e => e.school).map((edu) => (
                   <div key={edu.id} className={styles.itemGap}>
                     <div className="flex justify-between items-center">
                       <span className="flex items-center gap-2">
-                        <span className="font-semibold">
+                        <span className="rb-bold">
                           <EditableField
                             value={edu.school}
                             onChange={(v) => onUpdateEducation(edu.id, 'school', v)}
+                            className="rb-bold"
                           >
                             {edu.school}
                           </EditableField>
@@ -355,6 +360,16 @@ export function EditablePreview({
                               onChange={(v) => onUpdateEducation(edu.id, 'degree', v)}
                             >
                               {edu.degree}
+                            </EditableField>
+                          </span>
+                        )}
+                        {edu.ranking && (
+                          <span className="text-gray-500">
+                            排名: <EditableField
+                              value={edu.ranking}
+                              onChange={(v) => onUpdateEducation(edu.id, 'ranking', v)}
+                            >
+                              {edu.ranking}
                             </EditableField>
                           </span>
                         )}
@@ -380,48 +395,23 @@ export function EditablePreview({
             )}
 
             {/* 专业技能 */}
-            {(form.skillCategories?.some(c => c.name) || form.skills) && (
+            {form.skills && (
               <div 
                 className={`${styles.sectionGap} cursor-pointer hover:bg-blue-50/50 -mx-2 px-2 rounded transition-colors`}
                 onClick={() => onSectionClick?.('skill')}
               >
-                <h2 className={`${styles.sectionTitleSize} font-bold text-gray-900 border-b-2 border-gray-800 pb-2 mb-2`}>
+                <h2 className={`${styles.sectionTitleSize} rb-bold text-gray-900 border-b-2 border-gray-800 pb-2 mb-2`}>
                   专业技能
                 </h2>
-                {form.skillCategories?.filter(c => c.name).map((cat) => (
-                  <div key={cat.id} className={styles.itemGap}>
-                    <span className="font-semibold">
-                      <EditableField
-                        value={cat.name}
-                        onChange={(v) => onUpdateSkillCategory(cat.id, 'name', v)}
-                      >
-                        {cat.name}
-                      </EditableField>
-                    </span>
-                    {cat.description && (
-                      <p className={`text-gray-700 mt-0.5 ${styles.textSize}`}>
-                        <EditableField
-                          value={cat.description}
-                          onChange={(v) => onUpdateSkillCategory(cat.id, 'description', v)}
-                          multiline
-                        >
-                          {cat.description}
-                        </EditableField>
-                      </p>
-                    )}
-                  </div>
-                ))}
-                {!form.skillCategories?.length && form.skills && (
-                  <p className={`text-gray-700 ${styles.textSize}`}>
-                    <EditableField
-                      value={form.skills}
-                      onChange={onUpdateSkills}
-                      multiline
-                    >
-                      {form.skills}
-                    </EditableField>
-                  </p>
-                )}
+                <div className={`text-gray-700 ${styles.textSize} whitespace-pre-line`}>
+                  <EditableField
+                    value={form.skills}
+                    onChange={onUpdateSkills}
+                    multiline
+                  >
+                    {form.skills}
+                  </EditableField>
+                </div>
               </div>
             )}
 
@@ -431,17 +421,18 @@ export function EditablePreview({
                 className={`${styles.sectionGap} cursor-pointer hover:bg-blue-50/50 -mx-2 px-2 rounded transition-colors`}
                 onClick={() => onSectionClick?.('work')}
               >
-                <h2 className={`${styles.sectionTitleSize} font-bold text-gray-900 border-b-2 border-gray-800 pb-2 mb-2`}>
+                <h2 className={`${styles.sectionTitleSize} rb-bold text-gray-900 border-b-2 border-gray-800 pb-2 mb-2`}>
                   工作经历
                 </h2>
                 {form.experience.filter(e => e.company).map((exp) => (
                   <div key={exp.id} className={styles.itemGap}>
                     <div className="flex justify-between items-center mb-1">
                       <span className="flex items-center gap-2">
-                        <span className="font-semibold">
+                        <span className="rb-bold">
                           <EditableField
                             value={exp.company}
                             onChange={(v) => onUpdateExperience(exp.id, 'company', v)}
+                            className="rb-bold"
                           >
                             {exp.company}
                           </EditableField>
@@ -508,17 +499,18 @@ export function EditablePreview({
                 className={`${styles.sectionGap} cursor-pointer hover:bg-blue-50/50 -mx-2 px-2 rounded transition-colors`}
                 onClick={() => onSectionClick?.('project')}
               >
-                <h2 className={`${styles.sectionTitleSize} font-bold text-gray-900 border-b-2 border-gray-800 pb-2 mb-2`}>
+                <h2 className={`${styles.sectionTitleSize} rb-bold text-gray-900 border-b-2 border-gray-800 pb-2 mb-2`}>
                   项目经历
                 </h2>
                 {form.projects.filter(p => p.name).map((proj) => (
                   <div key={proj.id} className={styles.itemGap}>
                     <div className="flex justify-between items-center mb-1">
                       <span className="flex items-center gap-2">
-                        <span className="font-semibold">
+                        <span className="rb-bold">
                           <EditableField
                             value={proj.name}
                             onChange={(v) => onUpdateProject(proj.id, 'name', v)}
+                            className="rb-bold"
                           >
                             {proj.name}
                           </EditableField>
@@ -585,7 +577,7 @@ export function EditablePreview({
                 className={`${styles.sectionGap} cursor-pointer hover:bg-blue-50/50 -mx-2 px-2 rounded transition-colors`}
                 onClick={() => onSectionClick?.('award')}
               >
-                <h2 className={`${styles.sectionTitleSize} font-bold text-gray-900 border-b-2 border-gray-800 pb-2 mb-2`}>
+                <h2 className={`${styles.sectionTitleSize} rb-bold text-gray-900 border-b-2 border-gray-800 pb-2 mb-2`}>
                   荣誉奖项
                 </h2>
                 {form.awards.filter(a => a.name).map((award) => (

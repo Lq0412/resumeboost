@@ -1,5 +1,9 @@
-/*  */import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useRef, useState, useCallback, useMemo } from 'react';
+import { 
+  FileText, User, GraduationCap, Lightbulb, Briefcase, 
+  Rocket, Award, Save, Download, Sparkles, Undo2, FileEdit, Eye 
+} from 'lucide-react';
 import { useBuilderForm } from './useBuilderForm';
 import { formToMarkdown } from './formToMarkdown';
 import { showToast } from '../../components';
@@ -576,14 +580,14 @@ export default function Builder() {
       <header className="h-14 bg-[#111318]/90 backdrop-blur-xl border-b border-white/[0.06] px-4 flex items-center justify-between flex-shrink-0 shadow-[0_1px_0_rgba(255,255,255,0.03)]">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2.5 cursor-pointer group" onClick={() => navigate('/')}>
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center shadow-lg shadow-teal-500/10">
-              <span className="text-white font-bold text-xs">R</span>
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-orange-500 to-rose-600 flex items-center justify-center shadow-lg shadow-orange-500/20">
+              <FileText className="w-4 h-4 text-white" />
             </div>
             <span className="font-semibold text-gray-200 group-hover:text-white transition-colors">ResumeBoost</span>
           </div>
           {hasDraft && (
-            <button onClick={handleLoadDraft} className="text-xs text-teal-400 hover:text-teal-300 font-medium transition-colors flex items-center gap-1">
-              <span>📝</span> 加载草稿
+            <button onClick={handleLoadDraft} className="text-xs text-orange-400 hover:text-orange-300 font-medium transition-colors flex items-center gap-1.5">
+              <FileEdit className="w-3.5 h-3.5" /> 加载草稿
             </button>
           )}
         </div>
@@ -591,28 +595,28 @@ export default function Builder() {
           {canUndo && (
             <button 
               onClick={handleUndo} 
-              className="px-3 py-1.5 text-xs text-gray-300 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] rounded-lg transition-colors shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
+              className="px-3 py-1.5 text-xs text-gray-300 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] rounded-lg transition-colors shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] flex items-center gap-1.5"
             >
-              ↩️ 撤销
+              <Undo2 className="w-3.5 h-3.5" /> 撤销
             </button>
           )}
           <button 
             onClick={handleSaveDraft} 
-            className="px-3 py-1.5 text-xs text-gray-300 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] rounded-lg transition-colors shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
+            className="px-3 py-1.5 text-xs text-gray-300 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] rounded-lg transition-colors shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] flex items-center gap-1.5"
           >
-            💾 保存
+            <Save className="w-3.5 h-3.5" /> 保存
           </button>
           <button 
             onClick={handleExportPDF} 
-            className="px-3 py-1.5 text-xs text-gray-300 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] rounded-lg transition-colors shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
+            className="px-3 py-1.5 text-xs text-gray-300 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] rounded-lg transition-colors shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] flex items-center gap-1.5"
           >
-            📄 导出
+            <Download className="w-3.5 h-3.5" /> 导出
           </button>
           <button 
             onClick={handleSubmit} 
-            className="px-4 py-1.5 text-xs bg-gradient-to-r from-teal-600 to-teal-500 text-white rounded-lg hover:from-teal-500 hover:to-teal-400 transition-all font-medium shadow-lg shadow-teal-500/25 ring-1 ring-teal-400/30"
+            className="px-4 py-1.5 text-xs bg-gradient-to-r from-orange-500 to-rose-600 text-white rounded-lg hover:from-orange-600 hover:to-rose-700 transition-all font-medium shadow-lg shadow-orange-500/25 ring-1 ring-orange-400/30 flex items-center gap-1.5"
           >
-            ✨ AI 优化
+            <Sparkles className="w-3.5 h-3.5" /> AI 优化
           </button>
         </div>
       </header>
@@ -624,26 +628,29 @@ export default function Builder() {
           {/* Tab 导航 */}
           <div className="flex border-b border-white/[0.06] bg-[#0f1116]">
             {[
-              { id: 'basic' as EditTab, label: '基本', icon: '👤' },
-              { id: 'edu' as EditTab, label: '教育', icon: '🎓' },
-              { id: 'skill' as EditTab, label: '技能', icon: '💡' },
-              { id: 'work' as EditTab, label: '工作', icon: '💼' },
-              { id: 'project' as EditTab, label: '项目', icon: '🚀' },
-              { id: 'award' as EditTab, label: '奖项', icon: '🏆' },
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 px-2 py-2.5 text-xs font-medium transition-all ${
-                  activeTab === tab.id 
-                    ? 'bg-white/[0.04] text-teal-300 border-b-2 border-teal-400/70' 
-                    : 'text-gray-500 hover:text-gray-200 hover:bg-white/[0.03]'
-                }`}
-              >
-                <span className="block text-sm mb-0.5">{tab.icon}</span>
-                <span className="text-xs">{tab.label}</span>
-              </button>
-            ))}
+              { id: 'basic' as EditTab, label: '基本', Icon: User },
+              { id: 'edu' as EditTab, label: '教育', Icon: GraduationCap },
+              { id: 'skill' as EditTab, label: '技能', Icon: Lightbulb },
+              { id: 'work' as EditTab, label: '工作', Icon: Briefcase },
+              { id: 'project' as EditTab, label: '项目', Icon: Rocket },
+              { id: 'award' as EditTab, label: '奖项', Icon: Award },
+            ].map(tab => {
+              const Icon = tab.Icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex-1 px-2 py-2.5 text-xs font-medium transition-all flex flex-col items-center gap-1 ${
+                    activeTab === tab.id 
+                      ? 'bg-white/[0.04] text-orange-400 border-b-2 border-orange-400/70' 
+                      : 'text-gray-500 hover:text-gray-200 hover:bg-white/[0.03]'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span className="text-xs">{tab.label}</span>
+                </button>
+              );
+            })}
           </div>
 
           {/* 表单内容 */}
@@ -670,11 +677,7 @@ export default function Builder() {
             )}
             {activeTab === 'skill' && (
               <SkillTab
-                skillCategories={form.skillCategories}
                 skills={form.skills}
-                onAddCategory={addSkillCategory}
-                onRemoveCategory={removeSkillCategory}
-                onUpdateCategory={updateSkillCategory}
                 onUpdateSkills={updateSkills}
                 onResize={handleTextareaResize}
                 onFocus={handleTextareaFocus}
@@ -719,7 +722,7 @@ export default function Builder() {
 
         {/* 拖拽条 */}
         <div 
-          className="w-1 bg-white/[0.06] hover:bg-teal-500/50 active:bg-teal-500 cursor-col-resize flex-shrink-0 transition-colors" 
+          className="w-1 bg-white/[0.06] hover:bg-orange-500/50 active:bg-orange-500 cursor-col-resize flex-shrink-0 transition-colors" 
           onMouseDown={() => setIsDraggingLeft(true)} 
         />
 
@@ -727,27 +730,30 @@ export default function Builder() {
         <div className="flex-1 min-w-0 bg-gradient-to-br from-[#1b1d22] to-[#121318] flex flex-col overflow-hidden">
           <div className="h-10 bg-[#101218]/85 backdrop-blur-sm px-4 flex items-center justify-between flex-shrink-0 border-b border-white/[0.06] shadow-[0_1px_0_rgba(255,255,255,0.03)]">
             <div className="flex items-center gap-3">
-              <span className="text-xs font-semibold text-gray-200">📄 简历预览</span>
+              <div className="flex items-center gap-2">
+                <FileText className="w-4 h-4 text-gray-400" />
+                <span className="text-xs font-semibold text-gray-200">简历预览</span>
+              </div>
               <div className="flex items-center bg-white/[0.04] rounded-lg p-0.5 border border-white/[0.08]">
                 <button
                   onClick={() => setEditMode('preview')}
-                  className={`px-2.5 py-1 text-xs rounded-md transition-all ${
+                  className={`px-2.5 py-1 text-xs rounded-md transition-all flex items-center gap-1.5 ${
                     editMode === 'preview' 
-                      ? 'bg-teal-500/90 text-white shadow-[0_0_0_1px_rgba(45,212,191,0.45)]' 
+                      ? 'bg-orange-500/90 text-white shadow-[0_0_0_1px_rgba(249,115,22,0.45)]' 
                       : 'text-gray-500 hover:text-gray-200'
                   }`}
                 >
-                  ✏️ 可编辑
+                  <FileEdit className="w-3 h-3" /> 可编辑
                 </button>
                 <button
                   onClick={() => setEditMode('form')}
-                  className={`px-2.5 py-1 text-xs rounded-md transition-all ${
+                  className={`px-2.5 py-1 text-xs rounded-md transition-all flex items-center gap-1.5 ${
                     editMode === 'form' 
-                      ? 'bg-teal-500/90 text-white shadow-[0_0_0_1px_rgba(45,212,191,0.45)]' 
+                      ? 'bg-orange-500/90 text-white shadow-[0_0_0_1px_rgba(249,115,22,0.45)]' 
                       : 'text-gray-500 hover:text-gray-200'
                   }`}
                 >
-                  👁️ 只读
+                  <Eye className="w-3 h-3" /> 只读
                 </button>
               </div>
             </div>
@@ -762,7 +768,7 @@ export default function Builder() {
               <select 
                 value={densityMode} 
                 onChange={(e) => setDensityMode(e.target.value as DensityMode)} 
-                className={`text-xs bg-white/[0.04] text-gray-200 border rounded-lg px-2 py-1 focus:ring-2 focus:ring-teal-500/40 focus:border-teal-400/60 transition-all ${
+                className={`text-xs bg-white/[0.04] text-gray-200 border rounded-lg px-2 py-1 focus:ring-2 focus:ring-orange-500/40 focus:border-orange-400/60 transition-all ${
                   isOverflowing ? 'border-amber-500/40 ring-1 ring-amber-500/20' : 'border-white/[0.08]'
                 }`}
               >
@@ -807,7 +813,7 @@ export default function Builder() {
         {/* AI 侧边栏 */}
         {showAISidebar && (
           <div 
-            className="w-1 bg-white/[0.06] hover:bg-teal-500/50 active:bg-teal-500 cursor-col-resize flex-shrink-0 transition-colors" 
+            className="w-1 bg-white/[0.06] hover:bg-orange-500/50 active:bg-orange-500 cursor-col-resize flex-shrink-0 transition-colors" 
             onMouseDown={() => setIsDraggingRight(true)} 
           />
         )}

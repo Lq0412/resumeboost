@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { CheckCircle, XCircle, AlertTriangle, Info } from 'lucide-react';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
@@ -10,15 +11,16 @@ interface ToastProps {
 }
 
 const toastConfig = {
-  success: { bg: 'bg-emerald-600', icon: '✓' },
-  error: { bg: 'bg-red-600', icon: '✕' },
-  warning: { bg: 'bg-amber-500', icon: '⚠' },
-  info: { bg: 'bg-teal-600', icon: 'ℹ' },
+  success: { bg: 'bg-emerald-600', Icon: CheckCircle },
+  error: { bg: 'bg-red-600', Icon: XCircle },
+  warning: { bg: 'bg-amber-500', Icon: AlertTriangle },
+  info: { bg: 'bg-orange-600', Icon: Info },
 };
 
 export function Toast({ message, type = 'info', duration = 2500, onClose }: ToastProps) {
   const [isVisible, setIsVisible] = useState(true);
   const config = toastConfig[type];
+  const Icon = config.Icon;
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -35,7 +37,7 @@ export function Toast({ message, type = 'info', duration = 2500, onClose }: Toas
       }`}
     >
       <div className="flex items-center gap-2">
-        <span className="text-sm font-medium">{config.icon}</span>
+        <Icon className="w-4 h-4" />
         <span className="text-sm">{message}</span>
       </div>
     </div>

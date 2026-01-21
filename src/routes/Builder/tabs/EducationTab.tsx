@@ -35,6 +35,7 @@ export function EducationTab({
             <CompactInput value={edu.major || ''} onChange={(value) => onUpdate(edu.id, 'major', value)} placeholder="专业" />
             <CompactInput value={edu.degree || ''} onChange={(value) => onUpdate(edu.id, 'degree', value)} placeholder="学历" />
           </div>
+          <CompactInput value={edu.ranking || ''} onChange={(value) => onUpdate(edu.id, 'ranking', value)} placeholder="综合测评排名（如 1/120）" />
           <CompactDateRange
             startYear={edu.startYear}
             startMonth={edu.startMonth}

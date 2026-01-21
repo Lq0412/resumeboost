@@ -117,7 +117,7 @@ export function ResumePreview({ form, densityMode = 'normal', previewRef, onOver
             width: A4_WIDTH,
             minHeight: A4_HEIGHT,
             padding: styles.padding,
-            fontFamily: "'Microsoft YaHei', 'PingFang SC', sans-serif",
+            fontFamily: "'DengXian', 'Microsoft YaHei', 'PingFang SC', sans-serif",
             backgroundColor: '#ffffff',
           }}
         >
@@ -126,7 +126,7 @@ export function ResumePreview({ form, densityMode = 'normal', previewRef, onOver
             <div className={`${styles.sectionGap} flex`}>
               <div className="flex-1 pr-4">
                 {form.basicInfo.name && (
-                  <h1 className={`${styles.titleSize} font-bold text-gray-900 mb-1`}>
+                  <h1 className={`${styles.titleSize} rb-bold text-gray-900 mb-1`}>
                     {form.basicInfo.name}
                   </h1>
                 )}
@@ -136,17 +136,17 @@ export function ResumePreview({ form, densityMode = 'normal', previewRef, onOver
                   </p>
                 )}
                 <div className={`grid grid-cols-2 gap-x-3 gap-y-0.5 text-gray-600 ${styles.textSize}`}>
-                  {form.basicInfo.phone && <span>📱 {form.basicInfo.phone}</span>}
-                  {form.basicInfo.email && <span>✉️ {form.basicInfo.email}</span>}
-                  {form.basicInfo.city && <span>📍 {form.basicInfo.city}</span>}
-                  {form.basicInfo.status && <span>🔵 {form.basicInfo.status}</span>}
+                  {form.basicInfo.phone && <span>电话: {form.basicInfo.phone}</span>}
+                  {form.basicInfo.email && <span>邮箱: {form.basicInfo.email}</span>}
+                  {form.basicInfo.city && <span>城市: {form.basicInfo.city}</span>}
+                  {form.basicInfo.status && <span>状态: {form.basicInfo.status}</span>}
                   {form.basicInfo.birthYear && (
                     <span>
-                      🎂 {form.basicInfo.birthYear}
+                      出生: {form.basicInfo.birthYear}
                       {form.basicInfo.birthMonth && `-${form.basicInfo.birthMonth}`}
                     </span>
                   )}
-                  {form.basicInfo.hometown && <span>🏠 {form.basicInfo.hometown}</span>}
+                  {form.basicInfo.hometown && <span>籍贯: {form.basicInfo.hometown}</span>}
                   {form.basicInfo.github && (
                     <a 
                       href={form.basicInfo.github.startsWith('http') ? form.basicInfo.github : `https://${form.basicInfo.github}`} 
@@ -154,7 +154,7 @@ export function ResumePreview({ form, densityMode = 'normal', previewRef, onOver
                       rel="noopener noreferrer" 
                       className="text-blue-600 hover:underline truncate"
                     >
-                      🔗 {form.basicInfo.github}
+                      GitHub: {form.basicInfo.github}
                     </a>
                   )}
                   {form.basicInfo.website && (
@@ -164,7 +164,7 @@ export function ResumePreview({ form, densityMode = 'normal', previewRef, onOver
                       rel="noopener noreferrer" 
                       className="text-blue-600 hover:underline truncate"
                     >
-                      🌐 {form.basicInfo.website}
+                      网站: {form.basicInfo.website}
                     </a>
                   )}
                 </div>
@@ -181,16 +181,17 @@ export function ResumePreview({ form, densityMode = 'normal', previewRef, onOver
             {/* 教育经历 */}
             {form.education.some(e => e.school) && (
               <div className={styles.sectionGap}>
-                <h2 className={`${styles.sectionTitleSize} font-bold text-gray-900 border-b-2 border-gray-800 pb-2 mb-2`}>
+                <h2 className={`${styles.sectionTitleSize} rb-bold text-gray-900 border-b-2 border-gray-800 pb-2 mb-2`}>
                   教育经历
                 </h2>
                 {form.education.filter(e => e.school).map((edu) => (
                   <div key={edu.id} className={styles.itemGap}>
                     <div className="flex justify-between items-center">
                       <span className="flex items-center">
-                        <span className="font-semibold">{edu.school}</span>
+                        <span className="rb-bold">{edu.school}</span>
                         {edu.major && <span className="text-gray-600 ml-3">{edu.major}</span>}
                         {edu.degree && <span className="text-gray-500 ml-2">{edu.degree}</span>}
+                        {edu.ranking && <span className="text-gray-500 ml-2">排名: {edu.ranking}</span>}
                       </span>
                       <span className={`text-gray-500 ${styles.textSize}`}>
                         {formatTime(edu.startYear, edu.startMonth, edu.endYear, edu.endMonth)}
@@ -205,36 +206,28 @@ export function ResumePreview({ form, densityMode = 'normal', previewRef, onOver
             )}
 
             {/* 专业技能 */}
-            {(form.skillCategories?.some(c => c.name) || form.skills) && (
+            {form.skills && (
               <div className={styles.sectionGap}>
-                <h2 className={`${styles.sectionTitleSize} font-bold text-gray-900 border-b-2 border-gray-800 pb-2 mb-2`}>
+                <h2 className={`${styles.sectionTitleSize} rb-bold text-gray-900 border-b-2 border-gray-800 pb-2 mb-2`}>
                   专业技能
                 </h2>
-                {form.skillCategories?.filter(c => c.name).map((cat) => (
-                  <div key={cat.id} className={styles.itemGap}>
-                    <span className="font-semibold">{cat.name}</span>
-                    {cat.description && (
-                      <p className={`text-gray-700 mt-0.5 ${styles.textSize}`}>{cat.description}</p>
-                    )}
-                  </div>
-                ))}
-                {!form.skillCategories?.length && form.skills && (
-                  <p className={`text-gray-700 ${styles.textSize}`}>{form.skills}</p>
-                )}
+                <div className={`text-gray-700 ${styles.textSize} whitespace-pre-line`}>
+                  {form.skills}
+                </div>
               </div>
             )}
 
             {/* 工作经历 */}
             {form.experience.some(e => e.company) && (
               <div className={styles.sectionGap}>
-                <h2 className={`${styles.sectionTitleSize} font-bold text-gray-900 border-b-2 border-gray-800 pb-2 mb-2`}>
+                <h2 className={`${styles.sectionTitleSize} rb-bold text-gray-900 border-b-2 border-gray-800 pb-2 mb-2`}>
                   工作经历
                 </h2>
                 {form.experience.filter(e => e.company).map((exp) => (
                   <div key={exp.id} className={styles.itemGap}>
                     <div className="flex justify-between items-center mb-1">
                       <span className="flex items-center">
-                        <span className="font-semibold">{exp.company}</span>
+                        <span className="rb-bold">{exp.company}</span>
                         {exp.position && <span className="text-gray-600 ml-2">{exp.position}</span>}
                         {exp.location && <span className="text-gray-500 ml-2">{exp.location}</span>}
                       </span>
@@ -260,14 +253,14 @@ export function ResumePreview({ form, densityMode = 'normal', previewRef, onOver
             {/* 项目经历 */}
             {form.projects.some(p => p.name) && (
               <div className={styles.sectionGap}>
-                <h2 className={`${styles.sectionTitleSize} font-bold text-gray-900 border-b-2 border-gray-800 pb-2 mb-2`}>
+                <h2 className={`${styles.sectionTitleSize} rb-bold text-gray-900 border-b-2 border-gray-800 pb-2 mb-2`}>
                   项目经历
                 </h2>
                 {form.projects.filter(p => p.name).map((proj) => (
                   <div key={proj.id} className={styles.itemGap}>
                     <div className="flex justify-between items-center mb-1">
                       <span className="flex items-center">
-                        <span className="font-semibold">{proj.name}</span>
+                        <span className="rb-bold">{proj.name}</span>
                         {proj.role && <span className="text-gray-600 ml-2">{proj.role}</span>}
                         {proj.link && (
                           <a 
@@ -302,7 +295,7 @@ export function ResumePreview({ form, densityMode = 'normal', previewRef, onOver
             {/* 荣誉奖项 */}
             {form.awards?.some(a => a.name) && (
               <div className={styles.sectionGap}>
-                <h2 className={`${styles.sectionTitleSize} font-bold text-gray-900 border-b-2 border-gray-800 pb-2 mb-2`}>
+                <h2 className={`${styles.sectionTitleSize} rb-bold text-gray-900 border-b-2 border-gray-800 pb-2 mb-2`}>
                   荣誉奖项
                 </h2>
                 {form.awards.filter(a => a.name).map((award) => (

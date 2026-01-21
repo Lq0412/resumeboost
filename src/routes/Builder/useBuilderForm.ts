@@ -30,6 +30,7 @@ export interface EducationEntry {
   startMonth?: string;
   endYear?: string;
   endMonth?: string;
+  ranking?: string;      // 综合测评排名，如 "1/120"
   description?: string;  // 校园经历描述
 }
 
