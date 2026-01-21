@@ -193,10 +193,17 @@ resumeboost/
 - [x] 快捷操作按钮
 - [x] 撤销/重做支持
 - [x] 页面溢出智能提示
-- [ ] 多模板支持
+- [ ] 多模板支持（进行中）
 - [ ] 简历评分系统
 - [ ] 导出 Word 格式
 - [ ] 多语言支持
+
+## 📚 文档
+
+详细文档请查看 [docs](./docs/) 目录：
+- [UI 设计规范](./docs/ui-design-prompt.md)
+- [模板系统设计](./docs/TEMPLATE_SYSTEM_DESIGN.md)
+- [设计更新日志](./docs/DESIGN_UPDATES.md)
 
 ## 🤝 贡献
 
