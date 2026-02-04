@@ -11,10 +11,26 @@ interface ToastProps {
 }
 
 const toastConfig = {
-  success: { bg: 'bg-emerald-600', Icon: CheckCircle },
-  error: { bg: 'bg-red-600', Icon: XCircle },
-  warning: { bg: 'bg-amber-500', Icon: AlertTriangle },
-  info: { bg: 'bg-orange-600', Icon: Info },
+  success: { 
+    bg: 'bg-emerald-600', 
+    Icon: CheckCircle,
+    border: 'border-emerald-500'
+  },
+  error: { 
+    bg: 'bg-red-600', 
+    Icon: XCircle,
+    border: 'border-red-500'
+  },
+  warning: { 
+    bg: 'bg-amber-500', 
+    Icon: AlertTriangle,
+    border: 'border-amber-400'
+  },
+  info: { 
+    bg: 'bg-blue-600', 
+    Icon: Info,
+    border: 'border-blue-500'
+  },
 };
 
 export function Toast({ message, type = 'info', duration = 2500, onClose }: ToastProps) {
@@ -32,13 +48,13 @@ export function Toast({ message, type = 'info', duration = 2500, onClose }: Toas
 
   return (
     <div
-      className={`px-4 py-2.5 rounded-lg text-white shadow-lg transition-all duration-200 ${config.bg} ${
-        isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'
+      className={`px-5 py-3 rounded-xl text-white shadow-xl transition-all duration-300 ${config.bg} border-2 ${config.border} ${
+        isVisible ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 -translate-y-4 scale-95'
       }`}
     >
-      <div className="flex items-center gap-2">
-        <Icon className="w-4 h-4" />
-        <span className="text-sm">{message}</span>
+      <div className="flex items-center gap-3">
+        <Icon className="w-5 h-5" strokeWidth={2.5} />
+        <span className="text-sm font-semibold">{message}</span>
       </div>
     </div>
   );
@@ -65,7 +81,7 @@ export function ToastContainer() {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[9999] flex flex-col items-center gap-2">
+    <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[9999] flex flex-col items-center gap-3">
       {toasts.map((toast) => (
         <Toast
           key={toast.id}
